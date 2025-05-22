@@ -333,7 +333,10 @@ export default function Home() {
       });
       return;
     }
-    if (history.length <= 1 && !(history.length === 1 && history[0].pointSequence === 0 && history[0].value === 0)) {
+    // Check if history contains only the initial placeholder point or is empty
+    const isHistoryEffectivelyEmpty = history.length === 0 || (history.length === 1 && history[0].pointSequence === 0 && history[0].value === 0);
+
+    if (isHistoryEffectivelyEmpty) {
        toast({
         title: "Cannot Export Chart",
         description: "No meaningful chart data to export.",
@@ -344,18 +347,19 @@ export default function Home() {
 
     try {
       const canvas = await html2canvas(chartElement, {
-        scale: 2, // Increase scale for better resolution
-        useCORS: true, // If chart uses external images/fonts
-        logging: false, // Disable extensive logging for cleaner console
+        scale: 2, 
+        useCORS: true,
+        logging: false,
+        width: chartElement.scrollWidth, // Use the full scrollable width
+        height: chartElement.scrollHeight, // Use the full scrollable height
         onclone: (document) => {
-          // Ensure background color of the chart container is white for JPEG export
           const clonedChartElement = document.getElementById('chart-to-print');
           if (clonedChartElement) {
             clonedChartElement.style.backgroundColor = 'white';
           }
         }
       });
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // 0.9 quality
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9); 
       
       const link = document.createElement('a');
       link.href = dataUrl;
@@ -562,7 +566,7 @@ export default function Home() {
                   onClick={handleExportChartToJPEG} 
                   variant="outline" 
                   size="lg" 
-                  disabled={history.length <= 1 && !(history.length === 1 && history[0].pointSequence === 0 && history[0].value === 0)}
+                  disabled={history.length === 0 || (history.length === 1 && history[0].pointSequence === 0 && history[0].value === 0)}
                   className="w-full shadow-md hover:shadow-lg transition-shadow" 
                 >
                   <Download className="mr-2 h-5 w-5" />
@@ -579,3 +583,4 @@ export default function Home() {
     </main>
   );
 }
+
