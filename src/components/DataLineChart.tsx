@@ -2,7 +2,6 @@
 "use client";
 
 import type { DataPoint } from "@/lib/types";
-// format from date-fns is no longer needed as X-axis is numeric
 import {
   ChartContainer,
   ChartTooltip,
@@ -23,50 +22,77 @@ interface DataLineChartProps {
   data: DataPoint[];
 }
 
+// Updated chartConfig for positive/negative momentum colors
 const chartConfig = {
-  value: {
-    label: "Score Difference", // Updated label
-    color: "hsl(var(--primary))",
+  positiveMomentum: {
+    label: "Player Momentum",
+    color: "hsl(var(--chart-4))", // Orange-ish color from theme
+  },
+  negativeMomentum: {
+    label: "Opponent Momentum",
+    color: "hsl(var(--destructive))", // Red color from theme
   },
 } satisfies ChartConfig;
 
 export function DataLineChart({ data }: DataLineChartProps) {
-  // Data can be used directly as pointSequence is numeric
-  const chartData = useMemo(() => {
-    // Show at least two points for the line to render, even if the second is a duplicate of the first
-    // if data has only one point (initial {pointSequence: 0, value: 0})
-    if (data.length === 1) {
-        return [data[0], {...data[0], pointSequence: data[0].pointSequence + 0.001}]; // Add tiny offset for second point
-    }
-    return data;
-  }, [data]);
-  
   const yDomain: [number | 'auto', number | 'auto'] = useMemo(() => {
     if (data.length === 0) return ['auto', 'auto'];
     const values = data.map(p => p.value);
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
-    if (minVal === maxVal) { // If all values are same (e.g. initially 0, or always 0)
-        return [minVal - 1, maxVal + 1]; // Provide a small range
+    if (minVal === maxVal) {
+        return [minVal - 1, maxVal + 1];
     }
-    return ['auto', 'auto']; // Let recharts decide otherwise
+    return ['auto', 'auto'];
   }, [data]);
 
-  // Determine X-axis ticks dynamically or set a fixed interval
   const xTicks = useMemo(() => {
-    if (data.length < 2) return undefined; // Let Recharts decide for very few points
+    if (data.length < 2) return undefined;
     const maxPoint = Math.max(...data.map(p => p.pointSequence));
-    if (maxPoint <= 10) return undefined; // Default ticks for up to 10 points
-    // Example: show a tick every 5 points if more than 10 points
+    if (maxPoint <= 10) return undefined; 
     const ticks = [];
-    for (let i = 0; i <= maxPoint; i += Math.max(1, Math.floor(maxPoint / 10)) ) { // Aim for around 10 ticks
+    for (let i = 0; i <= maxPoint; i += Math.max(1, Math.floor(maxPoint / 10)) ) {
       ticks.push(i);
     }
-    if (!ticks.includes(maxPoint) && maxPoint > 0) ticks.push(maxPoint); // Ensure last point is a tick
+    if (!ticks.includes(maxPoint) && maxPoint > 0) ticks.push(maxPoint);
     return ticks.filter(tick => tick >=0);
   }, [data]);
 
-  if (data.length === 0 || (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0 && data.every(p => p.value === data[0].value))) {
+  // chartDataForProcessing handles the single point case for line rendering
+  const chartDataForProcessing = useMemo(() => {
+    if (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0) {
+        // Add a tiny offset for the second point if only the initial point exists, to make the line render
+        return [data[0], {...data[0], pointSequence: data[0].pointSequence + 0.001}];
+    }
+    return data;
+  }, [data]);
+
+  const { positiveDataLine, negativeDataLine } = useMemo(() => {
+    const positive: (DataPoint | { pointSequence: number; value: null })[] = [];
+    const negative: (DataPoint | { pointSequence: number; value: null })[] = [];
+
+    chartDataForProcessing.forEach(point => {
+      if (point.value > 0) {
+        positive.push(point);
+        negative.push({ pointSequence: point.pointSequence, value: null });
+      } else if (point.value < 0) {
+        negative.push(point);
+        positive.push({ pointSequence: point.pointSequence, value: null });
+      } else { // value === 0, include in both for continuous lines across axis
+        positive.push(point);
+        negative.push(point);
+      }
+    });
+    return { positiveDataLine: positive, negativeDataLine: negative };
+  }, [chartDataForProcessing]);
+  
+  // Condition for showing "No points recorded" message
+  const showNoPointsMessage = data.length === 0 || 
+                             (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0) ||
+                             (data.length > 0 && data.every(p => p.value === 0 && p.pointSequence === 0));
+
+
+  if (showNoPointsMessage) {
     return (
       <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 bg-muted/20 p-4 text-center text-muted-foreground shadow-inner">
         <p>No points recorded yet. Use the 'Player Wins Point' or 'Opponent Wins Point' buttons to track the match and see the graph update.</p>
@@ -78,7 +104,9 @@ export function DataLineChart({ data }: DataLineChartProps) {
     <ChartContainer config={chartConfig} className="h-full w-full">
       <LineChart
         accessibilityLayer
-        data={chartData} // Use chartData which might be the same as data or slightly modified
+        // Use the chartDataForProcessing for general chart properties if it was modified (e.g. for single point)
+        // The actual line data comes from positiveDataLine and negativeDataLine
+        data={chartDataForProcessing} 
         margin={{
           top: 5,
           right: 20,
@@ -88,15 +116,15 @@ export function DataLineChart({ data }: DataLineChartProps) {
       >
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border) / 0.5)" />
         <XAxis
-          dataKey="pointSequence" // Use pointSequence for X-axis
-          type="number"           // Explicitly set type to number
+          dataKey="pointSequence"
+          type="number"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
           stroke="hsl(var(--muted-foreground))"
-          domain={['dataMin', 'dataMax']} // Ensure X-axis spans all points
+          domain={['dataMin', 'dataMax']}
           allowDecimals={false}
-          ticks={xTicks} // Apply dynamic ticks
+          ticks={xTicks}
         />
         <YAxis
           tickLine={false}
@@ -104,7 +132,7 @@ export function DataLineChart({ data }: DataLineChartProps) {
           tickMargin={8}
           stroke="hsl(var(--muted-foreground))"
           domain={yDomain}
-          allowDecimals={false} // Score difference should be integer
+          allowDecimals={false}
         />
         <ChartTooltip
           cursor={false}
@@ -112,11 +140,13 @@ export function DataLineChart({ data }: DataLineChartProps) {
             indicator="line" 
             hideLabel={false} 
             labelFormatter={(label, payload) => {
-              if (payload && payload.length > 0 && payload[0].payload.pointSequence !== undefined) {
-                if (payload[0].payload.pointSequence === 0 || payload[0].payload.pointSequence === 0.001) return "Start of Match";
-                return `After Point ${payload[0].payload.pointSequence}`;
+              // Check payload and its structure before accessing properties
+              if (payload && payload.length > 0 && payload[0].payload && payload[0].payload.pointSequence !== undefined) {
+                const ps = payload[0].payload.pointSequence;
+                if (ps === 0 || ps === 0.001) return "Start of Match";
+                return `After Point ${ps}`;
               }
-              return label;
+              return label; // Fallback to default label
             }}
             formatter={(value) => ([value, "Score Diff."])}
             />}
@@ -124,15 +154,30 @@ export function DataLineChart({ data }: DataLineChartProps) {
         <Legend />
         <Line
           dataKey="value"
-          type="monotone"
-          stroke="var(--color-value)"
+          type="linear" // Straight lines
+          data={positiveDataLine}
+          stroke="var(--color-positiveMomentum)"
           strokeWidth={3}
-          dot={data.length < 50 || data.length === 1} // Show dots for smaller datasets or single point
+          dot={chartDataForProcessing.length < 50 || chartDataForProcessing.length === 1}
           activeDot={{ r: 6 }}
           animationDuration={300}
-          connectNulls={false} // Important if you have gaps
+          connectNulls={false} // Important for segmented lines
+          name={chartConfig.positiveMomentum.label}
+        />
+        <Line
+          dataKey="value"
+          type="linear" // Straight lines
+          data={negativeDataLine}
+          stroke="var(--color-negativeMomentum)"
+          strokeWidth={3}
+          dot={chartDataForProcessing.length < 50 || chartDataForProcessing.length === 1}
+          activeDot={{ r: 6 }}
+          animationDuration={300}
+          connectNulls={false} // Important for segmented lines
+          name={chartConfig.negativeMomentum.label}
         />
       </LineChart>
     </ChartContainer>
   );
 }
+
