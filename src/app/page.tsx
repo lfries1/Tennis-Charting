@@ -10,7 +10,7 @@ import { DataLineChart } from "@/components/DataLineChart";
 import type { DataPoint, GameMarker, SetMarker } from "@/lib/types";
 import { exportDataToSheetsAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, MinusCircle, SheetIcon, Loader2, TrendingUp, Award, ShieldX } from "lucide-react";
+import { PlusCircle, MinusCircle, SheetIcon, Loader2, TrendingUp, Award, ShieldX, Printer } from "lucide-react";
 
 const MAX_SETS = 3;
 const SETS_TO_WIN_MATCH = 2;
@@ -65,15 +65,17 @@ export default function Home() {
 
     const winnerName = winner === 'player' ? playerName : opponentName;
     const nextSetNumber = currentSetNumber + 1;
+    const matchNowOver = (winner === 'player' && newPlayerSets >= SETS_TO_WIN_MATCH) || (winner === 'opponent' && newOpponentSets >= SETS_TO_WIN_MATCH) || (nextSetNumber > MAX_SETS && newPlayerSets !== newOpponentSets);
 
-    if ((winner === 'player' && newPlayerSets >= SETS_TO_WIN_MATCH) || (winner === 'opponent' && newOpponentSets >= SETS_TO_WIN_MATCH) || (nextSetNumber > MAX_SETS && newPlayerSets !== newOpponentSets)) {
+
+    if (matchNowOver) {
       toast({
         title: `${winnerName} Wins the Match!`,
         description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${newPlayerSets}-${newOpponentSets}.`,
         variant: winner === 'opponent' ? "destructive" : undefined,
         duration: 5000,
       });
-      setCurrentSetNumber(MAX_SETS + 1); // Mark match as over
+      setCurrentSetNumber(MAX_SETS + 1); // Mark match as over by advancing set number beyond max
     } else if (nextSetNumber > MAX_SETS && newPlayerSets === newOpponentSets) {
        toast({
         title: "Match Ends - Max Sets Reached!",
@@ -202,6 +204,10 @@ export default function Home() {
       setIsExporting(false);
     }
   };
+
+  const handlePrintChart = () => {
+    window.print();
+  };
   
   if (!isClient) {
     return null; 
@@ -222,14 +228,10 @@ export default function Home() {
      }
   }
 
-  const disablePlayerWinsGameButton = matchOver || !((playerGames >= 5 && playerGames - opponentGames >= 1) || (playerGames === 6 && opponentGames === 5) || (playerGames === 6 && opponentGames === 6));
-  const disableOpponentWinsGameButton = matchOver || !((opponentGames >= 5 && opponentGames - playerGames >= 1) || (opponentGames === 6 && playerGames === 5) || (opponentGames === 6 && playerGames === 6));
-
-
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       <div className="w-full max-w-4xl space-y-8"> 
-        <Card className="shadow-xl rounded-lg overflow-hidden">
+        <Card className="shadow-xl rounded-lg overflow-hidden printable-card">
           <CardHeader className="bg-card/50 p-6">
             <div className="flex items-center justify-center space-x-3">
               <TrendingUp className="h-10 w-10 text-primary" />
@@ -241,7 +243,7 @@ export default function Home() {
               Track points, games, and sets to visualize momentum swings.
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-6 space-y-8">
+          <CardContent className="p-6 space-y-8 printable-card-content">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pb-6 border-b">
               <div>
                 <Label htmlFor="playerName" className="text-sm font-medium text-muted-foreground">Player 1 Name</Label>
@@ -292,7 +294,7 @@ export default function Home() {
               )}
             </div>
             
-            <div className="h-[350px] md:h-[400px] w-full rounded-lg border border-border p-2 shadow-sm">
+            <div id="chart-to-print" className="h-[350px] md:h-[400px] w-full rounded-lg border border-border p-2 shadow-sm bg-background">
               <DataLineChart 
                 data={history} 
                 gameMarkers={gameMarkers} 
@@ -303,58 +305,89 @@ export default function Home() {
             </div>
           </CardContent>
           <CardFooter className="grid grid-cols-2 gap-3 p-6 border-t bg-card/50">
-            <Button 
-              onClick={handlePlayerWin} 
-              size="lg" 
-              className="w-full shadow-md hover:shadow-lg transition-shadow bg-orange-500 hover:bg-orange-600 text-white" 
-              disabled={matchOver}
-            >
-              <PlusCircle className="mr-2 h-5 w-5" /> {playerName} Wins Point
-            </Button>
-            <Button 
-              onClick={handleOpponentWin} 
-              variant="destructive" 
-              size="lg" 
-              className="w-full shadow-md hover:shadow-lg transition-shadow" 
-              disabled={matchOver}
-            >
-              <MinusCircle className="mr-2 h-5 w-5" /> {opponentName} Wins Point
-            </Button>
-            <Button 
-              onClick={handlePlayerWinsGame} 
-              size="lg" 
-              className="w-full shadow-md hover:shadow-lg transition-shadow bg-orange-500 hover:bg-orange-600 text-white" 
-              disabled={matchOver}
-            >
-              <Award className="mr-2 h-5 w-5" /> {playerName} Wins Game
-            </Button>
-            <Button 
-              onClick={handleOpponentWinsGame} 
-              variant="destructive" 
-              size="lg" 
-              className="w-full shadow-md hover:shadow-lg transition-shadow" 
-              disabled={matchOver}
-            >
-              <ShieldX className="mr-2 h-5 w-5" /> {opponentName} Wins Game
-            </Button>
-            <Button 
-              onClick={handleExport} 
-              variant="secondary" 
-              size="lg" 
-              disabled={isExporting || history.length <= 1}
-              className="w-full col-span-2 shadow-md hover:shadow-lg transition-shadow" 
-            >
-              {isExporting ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <SheetIcon className="mr-2 h-5 w-5" />
-              )}
-              {isExporting ? "Exporting..." : "Export Match Data"}
-            </Button>
+            {!matchOver ? (
+              <>
+                <Button 
+                  onClick={handlePlayerWin} 
+                  size="lg" 
+                  className="w-full shadow-md hover:shadow-lg transition-shadow bg-orange-500 hover:bg-orange-600 text-white" 
+                  disabled={matchOver}
+                >
+                  <PlusCircle className="mr-2 h-5 w-5" /> {playerName} Wins Point
+                </Button>
+                <Button 
+                  onClick={handleOpponentWin} 
+                  variant="destructive" 
+                  size="lg" 
+                  className="w-full shadow-md hover:shadow-lg transition-shadow" 
+                  disabled={matchOver}
+                >
+                  <MinusCircle className="mr-2 h-5 w-5" /> {opponentName} Wins Point
+                </Button>
+                <Button 
+                  onClick={handlePlayerWinsGame} 
+                  size="lg" 
+                  className="w-full shadow-md hover:shadow-lg transition-shadow bg-orange-500 hover:bg-orange-600 text-white" 
+                  disabled={matchOver}
+                >
+                  <Award className="mr-2 h-5 w-5" /> {playerName} Wins Game
+                </Button>
+                <Button 
+                  onClick={handleOpponentWinsGame} 
+                  variant="destructive" 
+                  size="lg" 
+                  className="w-full shadow-md hover:shadow-lg transition-shadow" 
+                  disabled={matchOver}
+                >
+                  <ShieldX className="mr-2 h-5 w-5" /> {opponentName} Wins Game
+                </Button>
+                <Button 
+                  onClick={handleExport} 
+                  variant="secondary" 
+                  size="lg" 
+                  disabled={isExporting || history.length <= 1}
+                  className="w-full col-span-2 shadow-md hover:shadow-lg transition-shadow" 
+                >
+                  {isExporting ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <SheetIcon className="mr-2 h-5 w-5" />
+                  )}
+                  {isExporting ? "Exporting..." : "Export Match Data"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  onClick={handleExport} 
+                  variant="secondary" 
+                  size="lg" 
+                  disabled={isExporting || history.length <= 1}
+                  className="w-full shadow-md hover:shadow-lg transition-shadow" 
+                >
+                  {isExporting ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <SheetIcon className="mr-2 h-5 w-5" />
+                  )}
+                  {isExporting ? "Exporting..." : "Export Match Data"}
+                </Button>
+                <Button 
+                  onClick={handlePrintChart} 
+                  variant="outline" 
+                  size="lg" 
+                  disabled={history.length <= 1}
+                  className="w-full shadow-md hover:shadow-lg transition-shadow" 
+                >
+                  <Printer className="mr-2 h-5 w-5" />
+                  Export Chart to PDF
+                </Button>
+              </>
+            )}
           </CardFooter>
         </Card>
         <p className="text-center text-sm text-muted-foreground">
-          Tip: Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl/Cmd + B</kbd> to toggle sidebar (if available).
+          Tip: Use your browser's "Print" (Ctrl/Cmd + P) and select "Save as PDF" to export the chart.
         </p>
       </div>
     </main>

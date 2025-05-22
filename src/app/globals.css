@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -109,5 +110,45 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media print {
+  body > :not(main),
+  main > div > :not(.printable-card),
+  main > div > p, /* Tip paragraph */
+  .printable-card > :not(.printable-card-content), /* CardHeader, CardFooter */
+  .printable-card-content > :not(#chart-to-print), /* Other elements in CardContent */
+  body > div[id^="radix-"], /* Toaster and other Radix portals */
+  body > div[data-radix-toast-viewport]
+  {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  #chart-to-print, #chart-to-print * {
+    visibility: visible !important;
+    display: block !important; /* or flex depending on chart needs */
+  }
+  
+  #chart-to-print {
+    position: fixed !important; /* Use fixed to ensure it's relative to viewport */
+    left: 0 !important;
+    top: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    padding: 20px !important; /* Optional: for some spacing */
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border: none !important;
+    box-shadow: none !important;
+    background-color: white !important; /* Ensure chart has a white background for print */
+    overflow: hidden !important; /* Prevent scrollbars on the chart itself if content overflows due to fixed height */
+  }
+
+  /* Ensure the chart resizes to fill the dedicated print area */
+  #chart-to-print > div { /* Assuming ChartContainer renders a div */
+    width: 100% !important;
+    height: 100% !important;
   }
 }
