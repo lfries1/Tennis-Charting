@@ -114,41 +114,92 @@ body {
 }
 
 @media print {
+  body {
+    background-color: white !important;
+  }
+
   body > :not(main),
   main > div > :not(.printable-card),
-  main > div > p, /* Tip paragraph */
   .printable-card > :not(.printable-card-content), /* CardHeader, CardFooter */
-  .printable-card-content > :not(#chart-to-print), /* Other elements in CardContent */
+  .printable-card-content > *:not(#score-display-area):not(#chart-to-print), /* Elements to hide in card content */
   body > div[id^="radix-"], /* Toaster and other Radix portals */
-  body > div[data-radix-toast-viewport]
+  body > div[data-radix-toast-viewport],
+  .print-hide-tip /* Hide the on-screen tip */
   {
     display: none !important;
     visibility: hidden !important;
   }
 
-  #chart-to-print, #chart-to-print * {
+  /* Ensure the printable card content itself is visible if it's the parent of desired elements */
+  .printable-card-content {
+    display: block !important;
     visibility: visible !important;
-    display: block !important; /* or flex depending on chart needs */
-  }
-  
-  #chart-to-print {
-    position: fixed !important; /* Use fixed to ensure it's relative to viewport */
-    left: 0 !important;
-    top: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    padding: 20px !important; /* Optional: for some spacing */
-    margin: 0 !important;
-    box-sizing: border-box !important;
-    border: none !important;
-    box-shadow: none !important;
-    background-color: white !important; /* Ensure chart has a white background for print */
-    overflow: hidden !important; /* Prevent scrollbars on the chart itself if content overflows due to fixed height */
+    padding: 0 !important; /* Remove padding from card content for print */
   }
 
-  /* Ensure the chart resizes to fill the dedicated print area */
+  #score-display-area, #score-display-area *,
+  #chart-to-print, #chart-to-print * {
+    visibility: visible !important;
+    display: block !important; /* Default to block, adjust if needed */
+  }
+  
+  #score-display-area {
+    text-align: center;
+    margin: 20px auto 10px auto; /* Spacing */
+    padding: 15px;
+    border: 1px solid #ddd; /* Softer border for print */
+    background-color: white !important;
+    width: 95%;
+    max-width: 600px; /* Max width for summary */
+    box-sizing: border-box;
+  }
+
+  /* Hide all direct children of score-display-area initially when printing */
+  #score-display-area > *:not(#final-match-score-summary-print) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  /* Then, specifically unhide the final summary section and its children */
+  #score-display-area > #final-match-score-summary-print,
+  #score-display-area > #final-match-score-summary-print * {
+    display: block !important;
+    visibility: visible !important;
+  }
+  
+  /* Ensure text colors in the summary are print-friendly */
+  #final-match-score-summary-print, #final-match-score-summary-print * {
+     color: black !important;
+  }
+  #final-match-score-summary-print .text-primary {
+    color: black !important; 
+    font-weight: bold;
+  }
+  #final-match-score-summary-print .text-muted-foreground {
+    color: #444 !important; /* Darker grey for muted text */
+  }
+  #final-match-score-summary-print .text-foreground {
+    color: black !important;
+  }
+
+  #chart-to-print {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 750px; /* Max width for chart */
+    margin: 0 auto 20px auto !important; /* Centering and spacing */
+    height: auto !important;
+    aspect-ratio: 16 / 9; /* Maintain aspect ratio */
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    background-color: white !important;
+    overflow: visible !important;
+  }
+
   #chart-to-print > div { /* Assuming ChartContainer renders a div */
     width: 100% !important;
     height: 100% !important;
   }
 }
+
+    

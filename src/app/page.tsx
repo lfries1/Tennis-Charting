@@ -317,7 +317,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="text-center py-6 bg-muted/30 rounded-md shadow-inner space-y-2">
+            <div className="text-center py-6 bg-muted/30 rounded-md shadow-inner space-y-2" id="score-display-area">
               <p className="text-xl text-muted-foreground mb-1">Current Score Difference</p>
               <p className="text-7xl font-extrabold text-primary tracking-tighter">{scoreDifference}</p>
               <p className="text-sm text-muted-foreground mt-1">After {currentPointNumber} {currentPointNumber === 1 ? 'point' : 'points'} in total</p>
@@ -326,7 +326,7 @@ export default function Home() {
                 <p className="text-xl font-medium text-foreground">Set {currentSetNumber} Games: {playerGames} - {opponentGames}</p>
               )}
               {finalMatchStatusMessage && (
-                <div className="mt-4">
+                <div className="mt-4" id="final-match-score-summary-print">
                   <p className="text-2xl font-bold text-primary">{finalMatchStatusMessage}</p>
                   {(finalMatchStatusMessage.includes("Wins the Match!") || finalMatchStatusMessage.includes("wins!")) && setMarkers.length > 0 && (
                     <div className="mt-2 text-base">
@@ -476,10 +476,12 @@ export default function Home() {
             )}
           </CardFooter>
         </Card>
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground print-hide-tip">
           Tip: Use your browser's "Print" (Ctrl/Cmd + P) and select "Save as PDF" to export the chart.
         </p>
       </div>
     </main>
   );
 }
+
+    
