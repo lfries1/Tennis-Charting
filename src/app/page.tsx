@@ -91,8 +91,16 @@ export default function Home() {
     });
   };
 
+  const canPlayerWinCurrentSet = 
+    (playerGames === 6 && opponentGames <= 4) || 
+    (playerGames === 7 && (opponentGames === 5 || opponentGames === 6));
+
+  const canOpponentWinCurrentSet = 
+    (opponentGames === 6 && playerGames <= 4) || 
+    (opponentGames === 7 && (playerGames === 5 || playerGames === 6));
+
   const handlePlayerWinsSet = () => {
-    if (matchOver) return;
+    if (matchOver || !canPlayerWinCurrentSet) return;
     const newPlayerSets = playerSets + 1;
     setPlayerSets(newPlayerSets);
     const setScore = `${playerGames}:${opponentGames}`;
@@ -122,7 +130,7 @@ export default function Home() {
   };
 
   const handleOpponentWinsSet = () => {
-    if (matchOver) return;
+    if (matchOver || !canOpponentWinCurrentSet) return;
     const newOpponentSets = opponentSets + 1;
     setOpponentSets(newOpponentSets);
     const setScore = `${playerGames}:${opponentGames}`;
@@ -267,7 +275,7 @@ export default function Home() {
               onClick={handlePlayerWinsSet} 
               size="lg" 
               className="w-full shadow-md hover:shadow-lg transition-shadow bg-green-500 hover:bg-green-600 text-white" 
-              disabled={matchOver || currentSetNumber > MAX_SETS}
+              disabled={matchOver || currentSetNumber > MAX_SETS || !canPlayerWinCurrentSet}
             >
               <Trophy className="mr-2 h-5 w-5" /> Player Wins Set
             </Button>
@@ -276,7 +284,7 @@ export default function Home() {
               variant="destructive" 
               size="lg" 
               className="w-full shadow-md hover:shadow-lg transition-shadow border-red-700 bg-red-700 hover:bg-red-800 text-white" 
-              disabled={matchOver || currentSetNumber > MAX_SETS}
+              disabled={matchOver || currentSetNumber > MAX_SETS || !canOpponentWinCurrentSet}
             >
               <Skull className="mr-2 h-5 w-5" /> Opponent Wins Set
             </Button>

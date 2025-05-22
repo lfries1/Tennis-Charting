@@ -153,14 +153,12 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
       if (point.value >= 0) {
         finalPositive.push(point);
       } else {
-        // Add a null break point for positive line if value is negative
         finalPositive.push({ pointSequence: point.pointSequence, value: null });
       }
 
       if (point.value <= 0) {
         finalNegative.push(point);
       } else {
-         // Add a null break point for negative line if value is positive
         finalNegative.push({ pointSequence: point.pointSequence, value: null });
       }
     });
@@ -288,8 +286,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
         ))}
         {setMarkers?.map((marker, index) => {
           const isPlayerWin = marker.winner === 'player';
-          const labelFill = isPlayerWin ? 'hsl(0, 0%, 100%)' : 'hsl(var(--destructive-foreground))';
-          const labelBackground = isPlayerWin ? 'hsl(120, 60%, 40%)' : 'hsl(var(--destructive))';
+          const labelTextFill = isPlayerWin ? 'hsl(120, 60%, 35%)' : 'hsl(var(--destructive))'; // Green for player, Red for opponent
 
           return (
             <ReferenceLine
@@ -303,14 +300,11 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
               <RechartsLabel
                 value={`Set ${marker.setNumber}: ${marker.setScore}`}
                 position="top"
-                fill={labelFill}
+                fill={labelTextFill}
                 fontSize={12}
                 fontWeight="bold"
                 dy={-2} 
                 style={{ 
-                  background: labelBackground, 
-                  padding: '2px 4px', 
-                  borderRadius: '3px',
                   textAnchor: 'middle'
                 }}
               />
