@@ -32,19 +32,19 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
   const chartConfig = useMemo(() => ({
     positiveMomentum: {
       label: `${playerName}'s Momentum`,
-      color: "hsl(var(--chart-4))", 
+      color: "hsl(var(--chart-4))",
     },
     negativeMomentum: {
       label: `${opponentName}'s Momentum`,
-      color: "hsl(var(--destructive))", 
+      color: "hsl(var(--destructive))",
     },
   }), [playerName, opponentName]) satisfies ChartConfig;
-  
+
   const chartDataForProcessing = useMemo(() => {
     if (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0) {
-        return [data[0], {...data[0], pointSequence: data[0].pointSequence + 0.001}]; 
+        return [data[0], {...data[0], pointSequence: data[0].pointSequence + 0.001}];
     }
-    return data.length > 0 ? data : [{pointSequence: 0, value: 0}, {pointSequence: 0.001, value: 0}]; 
+    return data.length > 0 ? data : [{pointSequence: 0, value: 0}, {pointSequence: 0.001, value: 0}];
   }, [data]);
 
   const { maxPointValue, xTickValues } = useMemo(() => {
@@ -65,8 +65,8 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
     const values = chartDataForProcessing.map(p => p.value);
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
-    
-    const padding = 1; 
+
+    const padding = 1;
     let finalMin = minVal;
     let finalMax = maxVal;
 
@@ -92,29 +92,29 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
 
     const enrichedData: DataPoint[] = [];
     if (chartDataForProcessing.length > 0) {
-      enrichedData.push(chartDataForProcessing[0]); 
+      enrichedData.push(chartDataForProcessing[0]);
     }
 
     for (let i = 0; i < chartDataForProcessing.length - 1; i++) {
       const p1 = chartDataForProcessing[i];
       const p2 = chartDataForProcessing[i + 1];
 
-      if (p1.value * p2.value < 0) { 
+      if (p1.value * p2.value < 0) {
         const x1 = p1.pointSequence;
         const y1 = p1.value;
         const x2 = p2.pointSequence;
         const y2 = p2.value;
-        
-        if (y1 !== y2 && x1 !== x2) { 
+
+        if (y1 !== y2 && x1 !== x2) {
             const xIntercept = x1 - y1 * (x2 - x1) / (y2 - y1);
             enrichedData.push({ pointSequence: xIntercept, value: 0 });
-        } else if (x1 === x2 && y1 * y2 < 0) { 
-             enrichedData.push({ pointSequence: x1, value: 0 }); 
+        } else if (x1 === x2 && y1 * y2 < 0) {
+             enrichedData.push({ pointSequence: x1, value: 0 });
         }
       }
-      enrichedData.push(p2); 
+      enrichedData.push(p2);
     }
-    
+
     enrichedData.sort((a, b) => a.pointSequence - b.pointSequence);
 
     const uniqueEnrichedData = enrichedData.reduce((acc, current) => {
@@ -122,7 +122,6 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
       if (!existingPoint) {
         return acc.concat([current]);
       } else if (current.value === 0 && existingPoint.value !== 0) {
-        // Replace if new point is a zero-crossing and existing isn't, or if it's more precise (though not handled here)
         acc[acc.findIndex(item => item.pointSequence === current.pointSequence)] = current;
       }
       return acc;
@@ -145,12 +144,12 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
         finalNegative.push({ pointSequence: point.pointSequence, value: null });
       }
     });
-    
+
     return { positiveDataLine: finalPositive, negativeDataLine: finalNegative, enrichedDataLength: uniqueEnrichedData.length };
   }, [chartDataForProcessing]);
-  
-  const showNoPointsMessage = data.length === 0 || 
-                             (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0 && chartDataForProcessing.length <=2 ) || 
+
+  const showNoPointsMessage = data.length === 0 ||
+                             (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0 && chartDataForProcessing.length <=2 ) ||
                              (data.length > 0 && data.every(p => p.value === 0 && p.pointSequence === 0));
 
 
@@ -162,22 +161,26 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
     );
   }
 
-  const showDots = enrichedDataLength < 50 || data.length === 1; 
-  const tickPixelSpacing = 30; 
+  const showDots = enrichedDataLength < 50 || data.length === 1;
+  const tickPixelSpacing = 30;
   const calculatedChartWidth = (Math.floor(maxPointValue) + 1) * tickPixelSpacing;
   const chartRenderWidth = Math.max(600, calculatedChartWidth);
 
 
   return (
-    <ChartContainer config={chartConfig} className="h-full w-full">
+    <ChartContainer
+      config={chartConfig}
+      className="h-full" // Removed w-full
+      style={{ width: chartRenderWidth }} // Added explicit width style
+    >
       <LineChart
         accessibilityLayer
-        data={chartDataForProcessing} 
-        width={chartRenderWidth}
+        data={chartDataForProcessing}
+        // width prop removed; ResponsiveContainer will use ChartContainer's width
         margin={{
-          top: 30, 
+          top: 30,
           right: 20,
-          left: -10, 
+          left: -10,
           bottom: 5,
         }}
       >
@@ -189,10 +192,10 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
           axisLine={false}
           tickMargin={8}
           stroke="hsl(var(--muted-foreground))"
-          domain={[0, maxPointValue > 0 ? maxPointValue : 1]} // Ensure domain doesn't collapse if maxPointValue is 0
+          domain={[0, maxPointValue > 0 ? maxPointValue : 1]}
           ticks={xTickValues}
-          interval={0} 
-          allowDecimals={false} 
+          interval={0}
+          allowDecimals={false}
         />
         <YAxis
           tickLine={false}
@@ -204,9 +207,9 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
         />
         <ChartTooltip
           cursor={false}
-          content={<ChartTooltipContent 
-            indicator="line" 
-            hideLabel={false} 
+          content={<ChartTooltipContent
+            indicator="line"
+            hideLabel={false}
             labelFormatter={(label, payload) => {
               if (payload && payload.length > 0 && payload[0].payload && payload[0].payload.pointSequence !== undefined) {
                 const ps = payload[0].payload.pointSequence;
@@ -222,10 +225,10 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
               return typeof label === 'number' ? `Point ${label.toFixed(2)}` : String(label);
             }}
             formatter={(value, name, props) => {
-                if (props.payload.value !== null && props.payload.value !== undefined) { 
+                if (props.payload.value !== null && props.payload.value !== undefined) {
                     return [props.payload.value, "Score Diff."];
                 }
-                return []; 
+                return [];
             }}
             />}
         />
@@ -239,7 +242,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
           dot={showDots}
           activeDot={{ r: 6 }}
           animationDuration={300}
-          connectNulls={false} 
+          connectNulls={false}
           name={chartConfig.positiveMomentum.label}
         />
         <Line
@@ -258,24 +261,24 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
           <ReferenceLine
             key={`game-marker-${index}-${marker.pointSequence}-${marker.gameScore}`}
             x={marker.pointSequence}
-            stroke="hsl(var(--accent))" 
+            stroke="hsl(var(--accent))"
             strokeDasharray="3 3"
-            ifOverflow="visible" 
+            ifOverflow="visible"
           >
             <RechartsLabel
               value={marker.gameScore}
-              position="top" 
-              fill="hsl(var(--accent))" 
+              position="top"
+              fill="hsl(var(--accent))"
               fontSize={12}
               fontWeight="bold"
-              dy={-15} 
+              dy={-15}
               style={{ textAnchor: 'middle' }}
             />
           </ReferenceLine>
         ))}
         {setMarkers?.map((marker, index) => {
           const isPlayerWin = marker.winner === 'player';
-          const labelTextFill = isPlayerWin ? 'hsl(120, 70%, 40%)' : 'hsl(var(--destructive))'; // Green for player, red for opponent
+          const labelTextFill = isPlayerWin ? 'hsl(120, 70%, 40%)' : 'hsl(var(--destructive))';
           const winnerDisplayName = isPlayerWin ? playerName : opponentName;
           const labelValue = `Set ${marker.setNumber}: ${marker.setScore} (${winnerDisplayName})`;
 
@@ -284,9 +287,9 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
             <ReferenceLine
               key={`set-marker-${index}-${marker.pointSequence}-${marker.setScore}-${marker.winner}`}
               x={marker.pointSequence}
-              stroke="hsl(var(--primary))" 
-              strokeWidth={2} 
-              strokeDasharray="5 5" 
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              strokeDasharray="5 5"
               ifOverflow="visible"
             >
               <RechartsLabel
@@ -295,8 +298,8 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
                 fill={labelTextFill}
                 fontSize={12}
                 fontWeight="bold"
-                dy={-2} 
-                style={{ 
+                dy={-2}
+                style={{
                   textAnchor: 'middle'
                 }}
               />
