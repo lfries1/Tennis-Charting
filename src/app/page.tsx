@@ -76,8 +76,8 @@ export default function Home() {
     });
 
     // Check for set win
-    const playerWinsSetCondition = (newPlayerGames === 6 && opponentGames <= 4) || (newPlayerGames === 7 && (opponentGames === 5 || opponentGames === 6));
-    if (playerWinsSetCondition) {
+    const playerWinsSetCondition = (newPlayerGames >= 6 && newPlayerGames - opponentGames >= 2) || (newPlayerGames === 7 && opponentGames === 6) || (newPlayerGames === 7 && opponentGames === 5);
+    if (playerWinsSetCondition && currentSetNumber <= MAX_SETS) {
       const newPlayerSets = playerSets + 1;
       setPlayerSets(newPlayerSets);
       const setScore = `${newPlayerGames}:${opponentGames}`;
@@ -87,13 +87,13 @@ export default function Home() {
       ]);
       
       const nextSetNumber = currentSetNumber + 1;
-      if (newPlayerSets >= SETS_TO_WIN_MATCH || (nextSetNumber > MAX_SETS && newPlayerSets !== opponentSets) ) {
+      if (newPlayerSets >= SETS_TO_WIN_MATCH || (nextSetNumber > MAX_SETS && newPlayerSets > opponentSets) ) {
         toast({
           title: "Player Wins the Match!",
           description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${newPlayerSets}-${opponentSets}.`,
           duration: 5000,
         });
-         setCurrentSetNumber(MAX_SETS + 1); // Mark match as definitively over in terms of sets display
+         setCurrentSetNumber(MAX_SETS + 1); 
       } else if (nextSetNumber > MAX_SETS && newPlayerSets === opponentSets) {
          toast({
           title: "Match Ends - Max Sets Reached!",
@@ -130,8 +130,8 @@ export default function Home() {
     });
 
     // Check for set win
-    const opponentWinsSetCondition = (newOpponentGames === 6 && playerGames <= 4) || (newOpponentGames === 7 && (playerGames === 5 || playerGames === 6));
-    if (opponentWinsSetCondition) {
+    const opponentWinsSetCondition = (newOpponentGames >= 6 && newOpponentGames - playerGames >= 2) || (newOpponentGames === 7 && playerGames === 6) || (newOpponentGames === 7 && playerGames === 5);
+    if (opponentWinsSetCondition && currentSetNumber <= MAX_SETS) {
       const newOpponentSets = opponentSets + 1;
       setOpponentSets(newOpponentSets);
       const setScore = `${playerGames}:${newOpponentGames}`;
@@ -141,14 +141,14 @@ export default function Home() {
       ]);
 
       const nextSetNumber = currentSetNumber + 1;
-      if (newOpponentSets >= SETS_TO_WIN_MATCH || (nextSetNumber > MAX_SETS && newOpponentSets !== playerSets)) {
+      if (newOpponentSets >= SETS_TO_WIN_MATCH || (nextSetNumber > MAX_SETS && newOpponentSets > playerSets)) {
         toast({
           title: "Opponent Wins the Match.",
           description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${playerSets}-${newOpponentSets}.`,
           variant: "destructive",
           duration: 5000,
         });
-        setCurrentSetNumber(MAX_SETS + 1); // Mark match as definitively over
+        setCurrentSetNumber(MAX_SETS + 1); 
       } else if (nextSetNumber > MAX_SETS && newOpponentSets === playerSets) {
          toast({
           title: "Match Ends - Max Sets Reached!",
@@ -263,7 +263,19 @@ export default function Home() {
                 <p className="text-xl font-medium text-foreground">Set {currentSetNumber} Games: {playerGames} - {opponentGames}</p>
               )}
               {matchStatusMessage && (
-                <p className="text-2xl font-bold text-primary mt-2">{matchStatusMessage}</p>
+                <div className="mt-4">
+                  <p className="text-2xl font-bold text-primary">{matchStatusMessage}</p>
+                  {matchStatusMessage.includes("Wins the Match!") && setMarkers.length > 0 && (
+                    <div className="mt-2 text-base">
+                      <p className="font-medium text-muted-foreground mb-1">Set Scores:</p>
+                      {setMarkers.map((set, index) => (
+                        <p key={index} className="my-0.5 text-foreground">
+                          Set {set.setNumber}: {set.setScore} ({set.winner.charAt(0).toUpperCase() + set.winner.slice(1)})
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             
@@ -307,5 +319,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
