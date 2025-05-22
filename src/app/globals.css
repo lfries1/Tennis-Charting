@@ -114,8 +114,13 @@ body {
 }
 
 @media print {
-  body {
+  body, main, .printable-card, .printable-card-content {
     background-color: white !important;
+    overflow: visible !important; /* Allow content to expand */
+    width: auto !important; /* Allow content to expand */
+    height: auto !important; /* Allow content to expand */
+    box-shadow: none !important;
+    border: none !important;
   }
 
   body > :not(main),
@@ -181,25 +186,23 @@ body {
     color: black !important;
   }
 
-  #chart-to-print {
+ #chart-to-print {
     position: relative !important;
-    width: 100% !important;
-    max-width: 750px; /* Max width for chart */
+    width: auto !important; /* Allow chart to take its full calculated width */
+    height: auto !important; /* Allow chart to take its full calculated height */
+    max-width: none !important; /* Remove max-width constraint for printing */
     margin: 0 auto 20px auto !important; /* Centering and spacing */
-    height: auto !important;
-    aspect-ratio: 16 / 9; /* Maintain aspect ratio */
     padding: 0 !important;
     box-sizing: border-box !important;
     border: 1px solid #ddd !important;
     box-shadow: none !important;
-    background-color: white !important;
-    overflow: visible !important;
+    background-color: white !important; /* Ensure chart background is white for JPEG/Print */
+    overflow: visible !important; /* Ensure the chart content is not clipped */
+    page-break-inside: avoid !important; /* Try to keep the chart on one page vertically */
   }
 
   #chart-to-print > div { /* Assuming ChartContainer renders a div */
-    width: 100% !important;
+    width: 100% !important; /* Recharts ResponsiveContainer will handle this */
     height: 100% !important;
   }
 }
-
-    
