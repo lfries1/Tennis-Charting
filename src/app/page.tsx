@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataLineChart } from "@/components/DataLineChart";
 import type { DataPoint, GameMarker, SetMarker } from "@/lib/types";
-// Removed import for exportDataToSheetsAction as it's no longer directly used
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, MinusCircle, TrendingUp, Award, ShieldX, Printer, LogOut, Mail } from "lucide-react";
 
@@ -266,11 +265,46 @@ export default function Home() {
 
 
     if (exportableHistory.length > 0) {
-      body += "Point History (Point: ScoreDifference):\n";
+      body += "Point History (Point: ScoreDifference (Current Set Games)):\n";
+      
+      // Ensure markers are sorted by pointSequence for correct processing logic
+      const sortedGameMarkers = [...gameMarkers].sort((a, b) => a.pointSequence - b.pointSequence);
+      const sortedSetMarkers = [...setMarkers].sort((a, b) => a.pointSequence - b.pointSequence);
+
       exportableHistory.forEach(p => {
-        body += `  Point ${p.pointSequence}: ${p.value}\n`;
+        let emailCurrentSetNumber = 1;
+        let lastSetMarkerPointSequenceForGameReset = 0;
+
+        // Determine the set number for the current point p
+        for (const setMarker of sortedSetMarkers) {
+            if (p.pointSequence > setMarker.pointSequence) {
+                // Point p is in a set *after* this setMarker concluded a set.
+                emailCurrentSetNumber = setMarker.setNumber + 1;
+                lastSetMarkerPointSequenceForGameReset = setMarker.pointSequence;
+            } else {
+                // Point p is within the set that this setMarker will conclude, or an earlier one.
+                break;
+            }
+        }
+
+        let emailCurrentPlayerGames = 0;
+        let emailCurrentOpponentGames = 0;
+        // Determine the game score for point p within its current set context
+        for (const gameMarker of sortedGameMarkers) {
+            if (gameMarker.pointSequence > lastSetMarkerPointSequenceForGameReset && gameMarker.pointSequence < p.pointSequence) {
+                // This game was completed before point p, and within the current set context.
+                const [playerGamesStr, opponentGamesStr] = gameMarker.gameScore.split(':');
+                emailCurrentPlayerGames = parseInt(playerGamesStr, 10);
+                emailCurrentOpponentGames = parseInt(opponentGamesStr, 10);
+            }
+            if (gameMarker.pointSequence >= p.pointSequence) {
+                // Game markers at or after p are not relevant for game score *during* p.
+                break;
+            }
+        }
+        body += `  Point ${p.pointSequence}: ${p.value} (Set ${emailCurrentSetNumber} Games: ${emailCurrentPlayerGames}-${emailCurrentOpponentGames})\n`;
       });
-       body += "\n";
+      body += "\n";
     } else {
         body += "Point History: No points recorded.\n\n";
     }
@@ -500,4 +534,3 @@ export default function Home() {
     </main>
   );
 }
-
