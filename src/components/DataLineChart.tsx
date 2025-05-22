@@ -24,20 +24,22 @@ interface DataLineChartProps {
   data: DataPoint[];
   gameMarkers?: GameMarker[];
   setMarkers?: SetMarker[];
+  playerName: string;
+  opponentName: string;
 }
 
-const chartConfig = {
-  positiveMomentum: {
-    label: "Player Momentum",
-    color: "hsl(var(--chart-4))", 
-  },
-  negativeMomentum: {
-    label: "Opponent Momentum",
-    color: "hsl(var(--destructive))", 
-  },
-} satisfies ChartConfig;
-
-export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartProps) {
+export function DataLineChart({ data, gameMarkers, setMarkers, playerName, opponentName }: DataLineChartProps) {
+  const chartConfig = useMemo(() => ({
+    positiveMomentum: {
+      label: `${playerName}'s Momentum`,
+      color: "hsl(var(--chart-4))", 
+    },
+    negativeMomentum: {
+      label: `${opponentName}'s Momentum`,
+      color: "hsl(var(--destructive))", 
+    },
+  }), [playerName, opponentName]) satisfies ChartConfig;
+  
   const chartDataForProcessing = useMemo(() => {
     if (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0) {
         return [data[0], {...data[0], pointSequence: data[0].pointSequence + 0.001}]; 
@@ -139,7 +141,6 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
       if (!existingPoint) {
         return acc.concat([current]);
       } else if (current.value === 0 && existingPoint.value !== 0) {
-        // If current point is an intercept (value 0) and existing point at same sequence is not, replace
         acc[acc.findIndex(item => item.pointSequence === current.pointSequence)] = current;
       }
       return acc;
@@ -286,7 +287,10 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
         ))}
         {setMarkers?.map((marker, index) => {
           const isPlayerWin = marker.winner === 'player';
-          const labelTextFill = isPlayerWin ? 'hsl(120, 60%, 35%)' : 'hsl(var(--destructive))'; // Green for player, Red for opponent
+          const labelTextFill = isPlayerWin ? 'hsl(120, 60%, 35%)' : 'hsl(var(--destructive))';
+          const winnerDisplayName = isPlayerWin ? playerName : opponentName;
+          const labelValue = `Set ${marker.setNumber}: ${marker.setScore} (${winnerDisplayName})`;
+
 
           return (
             <ReferenceLine
@@ -298,7 +302,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
               ifOverflow="visible"
             >
               <RechartsLabel
-                value={`Set ${marker.setNumber}: ${marker.setScore}`}
+                value={labelValue}
                 position="top"
                 fill={labelTextFill}
                 fontSize={12}

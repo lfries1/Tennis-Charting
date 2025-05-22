@@ -4,6 +4,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { DataLineChart } from "@/components/DataLineChart";
 import type { DataPoint, GameMarker, SetMarker } from "@/lib/types";
 import { exportDataToSheetsAction } from "./actions";
@@ -14,6 +16,9 @@ const MAX_SETS = 3;
 const SETS_TO_WIN_MATCH = 2;
 
 export default function Home() {
+  const [playerName, setPlayerName] = useState<string>("Player 1");
+  const [opponentName, setOpponentName] = useState<string>("Player 2");
+
   const [scoreDifference, setScoreDifference] = useState<number>(0);
   const [currentPointNumber, setCurrentPointNumber] = useState<number>(0);
   const [history, setHistory] = useState<DataPoint[]>([]);
@@ -71,11 +76,10 @@ export default function Home() {
       { pointSequence: currentPointNumber, gameScore: newGameScore }
     ]);
     toast({
-      title: "Game to Player!",
-      description: `Set ${currentSetNumber} game score: ${newGameScore} (Player : Opponent).`,
+      title: `Game to ${playerName}!`,
+      description: `Set ${currentSetNumber} game score: ${newPlayerGames}:${opponentGames} (${playerName} : ${opponentName}).`,
     });
 
-    // Check for set win
     const playerWinsSetCondition = (newPlayerGames >= 6 && newPlayerGames - opponentGames >= 2) || (newPlayerGames === 7 && opponentGames === 6) || (newPlayerGames === 7 && opponentGames === 5);
     if (playerWinsSetCondition && currentSetNumber <= MAX_SETS) {
       const newPlayerSets = playerSets + 1;
@@ -89,7 +93,7 @@ export default function Home() {
       const nextSetNumber = currentSetNumber + 1;
       if (newPlayerSets >= SETS_TO_WIN_MATCH || (nextSetNumber > MAX_SETS && newPlayerSets > opponentSets) ) {
         toast({
-          title: "Player Wins the Match!",
+          title: `${playerName} Wins the Match!`,
           description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${newPlayerSets}-${opponentSets}.`,
           duration: 5000,
         });
@@ -104,7 +108,7 @@ export default function Home() {
       }
       else {
         toast({
-          title: `Set ${currentSetNumber} to Player!`,
+          title: `Set ${currentSetNumber} to ${playerName}!`,
           description: `Set score: ${setScore}. Starting Set ${nextSetNumber}.`,
         });
         setCurrentSetNumber(nextSetNumber);
@@ -124,12 +128,11 @@ export default function Home() {
       { pointSequence: currentPointNumber, gameScore: newGameScore }
     ]);
     toast({
-      title: "Game to Opponent.",
-      description: `Set ${currentSetNumber} game score: ${newGameScore} (Player : Opponent).`,
+      title: `Game to ${opponentName}.`,
+      description: `Set ${currentSetNumber} game score: ${newGameScore} (${playerName} : ${opponentName}).`,
       variant: "destructive",
     });
 
-    // Check for set win
     const opponentWinsSetCondition = (newOpponentGames >= 6 && newOpponentGames - playerGames >= 2) || (newOpponentGames === 7 && playerGames === 6) || (newOpponentGames === 7 && playerGames === 5);
     if (opponentWinsSetCondition && currentSetNumber <= MAX_SETS) {
       const newOpponentSets = opponentSets + 1;
@@ -143,7 +146,7 @@ export default function Home() {
       const nextSetNumber = currentSetNumber + 1;
       if (newOpponentSets >= SETS_TO_WIN_MATCH || (nextSetNumber > MAX_SETS && newOpponentSets > playerSets)) {
         toast({
-          title: "Opponent Wins the Match.",
+          title: `${opponentName} Wins the Match.`,
           description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${playerSets}-${newOpponentSets}.`,
           variant: "destructive",
           duration: 5000,
@@ -160,7 +163,7 @@ export default function Home() {
       }
       else {
         toast({
-          title: `Set ${currentSetNumber} to Opponent.`,
+          title: `Set ${currentSetNumber} to ${opponentName}.`,
           description: `Set score: ${setScore}. Starting Set ${nextSetNumber}.`,
           variant: "destructive",
         });
@@ -222,18 +225,18 @@ export default function Home() {
     return null; 
   }
 
-  let matchStatusMessage = "";
+  let finalMatchStatusMessage = "";
   if (playerSets >= SETS_TO_WIN_MATCH) {
-    matchStatusMessage = "Player Wins the Match!";
+    finalMatchStatusMessage = `${playerName} Wins the Match!`;
   } else if (opponentSets >= SETS_TO_WIN_MATCH) {
-    matchStatusMessage = "Opponent Wins the Match!";
+    finalMatchStatusMessage = `${opponentName} Wins the Match!`;
   } else if (currentSetNumber > MAX_SETS) {
      if (playerSets > opponentSets) {
-        matchStatusMessage = "Player Wins the Match!";
+        finalMatchStatusMessage = `${playerName} Wins the Match!`;
      } else if (opponentSets > playerSets) {
-        matchStatusMessage = "Opponent Wins the Match!";
+        finalMatchStatusMessage = `${opponentName} Wins the Match!`;
      } else {
-        matchStatusMessage = "Match ended (Max sets reached). It's a draw based on sets!"; 
+        finalMatchStatusMessage = "Match ended (Max sets reached). It's a draw based on sets!"; 
      }
   }
 
@@ -254,23 +257,48 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pb-6 border-b">
+              <div>
+                <Label htmlFor="playerName" className="text-sm font-medium text-muted-foreground">Player 1 Name</Label>
+                <Input 
+                  id="playerName" 
+                  value={playerName} 
+                  onChange={(e) => setPlayerName(e.target.value)} 
+                  placeholder="Enter Player 1 Name"
+                  className="mt-1 shadow-sm" 
+                  disabled={matchOver || currentPointNumber > 0}
+                />
+              </div>
+              <div>
+                <Label htmlFor="opponentName" className="text-sm font-medium text-muted-foreground">Player 2 Name</Label>
+                <Input 
+                  id="opponentName" 
+                  value={opponentName} 
+                  onChange={(e) => setOpponentName(e.target.value)} 
+                  placeholder="Enter Player 2 Name" 
+                  className="mt-1 shadow-sm"
+                  disabled={matchOver || currentPointNumber > 0}
+                />
+              </div>
+            </div>
+
             <div className="text-center py-6 bg-muted/30 rounded-md shadow-inner space-y-2">
               <p className="text-xl text-muted-foreground mb-1">Current Score Difference</p>
               <p className="text-7xl font-extrabold text-primary tracking-tighter">{scoreDifference}</p>
               <p className="text-sm text-muted-foreground mt-1">After {currentPointNumber} {currentPointNumber === 1 ? 'point' : 'points'} in total</p>
-              <p className="text-2xl font-semibold text-foreground mt-3">Sets: {playerSets} - {opponentSets}</p>
+              <p className="text-2xl font-semibold text-foreground mt-3">Sets: {playerSets} - {opponentSets} <span className="text-base font-normal">({playerName} vs {opponentName})</span></p>
               {!matchOver && currentSetNumber <= MAX_SETS && (
                 <p className="text-xl font-medium text-foreground">Set {currentSetNumber} Games: {playerGames} - {opponentGames}</p>
               )}
-              {matchStatusMessage && (
+              {finalMatchStatusMessage && (
                 <div className="mt-4">
-                  <p className="text-2xl font-bold text-primary">{matchStatusMessage}</p>
-                  {matchStatusMessage.includes("Wins the Match!") && setMarkers.length > 0 && (
+                  <p className="text-2xl font-bold text-primary">{finalMatchStatusMessage}</p>
+                  {finalMatchStatusMessage.includes("Wins the Match!") && setMarkers.length > 0 && (
                     <div className="mt-2 text-base">
                       <p className="font-medium text-muted-foreground mb-1">Set Scores:</p>
                       {setMarkers.map((set, index) => (
                         <p key={index} className="my-0.5 text-foreground">
-                          Set {set.setNumber}: {set.setScore} ({set.winner.charAt(0).toUpperCase() + set.winner.slice(1)})
+                          Set {set.setNumber}: {set.setScore} ({set.winner === 'player' ? playerName : opponentName})
                         </p>
                       ))}
                     </div>
@@ -280,21 +308,27 @@ export default function Home() {
             </div>
             
             <div className="h-[350px] md:h-[400px] w-full rounded-lg border border-border p-2 shadow-sm">
-              <DataLineChart data={history} gameMarkers={gameMarkers} setMarkers={setMarkers} />
+              <DataLineChart 
+                data={history} 
+                gameMarkers={gameMarkers} 
+                setMarkers={setMarkers} 
+                playerName={playerName} 
+                opponentName={opponentName} 
+              />
             </div>
           </CardContent>
           <CardFooter className="grid grid-cols-2 gap-3 p-6 border-t bg-card/50">
             <Button onClick={handlePlayerWin} size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow" disabled={matchOver}>
-              <PlusCircle className="mr-2 h-5 w-5" /> Player Wins Point
+              <PlusCircle className="mr-2 h-5 w-5" /> {playerName} Wins Point
             </Button>
             <Button onClick={handleOpponentWin} variant="outline" size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow" disabled={matchOver}>
-              <MinusCircle className="mr-2 h-5 w-5" /> Opponent Wins Point
+              <MinusCircle className="mr-2 h-5 w-5" /> {opponentName} Wins Point
             </Button>
             <Button onClick={handlePlayerWinsGame} size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow" disabled={matchOver}>
-              <Award className="mr-2 h-5 w-5" /> Player Wins Game
+              <Award className="mr-2 h-5 w-5" /> {playerName} Wins Game
             </Button>
             <Button onClick={handleOpponentWinsGame} variant="destructive" size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow" disabled={matchOver}>
-              <ShieldX className="mr-2 h-5 w-5" /> Opponent Wins Game
+              <ShieldX className="mr-2 h-5 w-5" /> {opponentName} Wins Game
             </Button>
             <Button 
               onClick={handleExport} 
