@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataLineChart } from "@/components/DataLineChart";
 import type { DataPoint, GameMarker, SetMarker } from "@/lib/types";
-import { exportDataToSheetsAction } from "./actions";
+// Removed import for exportDataToSheetsAction as it's no longer directly used by the email button
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, MinusCircle, Loader2, TrendingUp, Award, ShieldX, Printer, LogOut, Mail } from "lucide-react";
+import { PlusCircle, MinusCircle, TrendingUp, Award, ShieldX, Printer, LogOut, Mail } from "lucide-react";
 
 const MAX_SETS = 3;
 const SETS_TO_WIN_MATCH = 2;
@@ -34,7 +34,7 @@ export default function Home() {
   const [setMarkers, setSetMarkers] = useState<SetMarker[]>([]);
   
   const [isClient, setIsClient] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  // const [isExporting, setIsExporting] = useState(false); // Removed isExporting state
   const { toast } = useToast();
   const [withdrawnPlayer, setWithdrawnPlayer] = useState<'player' | 'opponent' | null>(null);
 
@@ -193,69 +193,6 @@ export default function Home() {
     });
   };
 
-  const handleExport = async () => {
-    if (!email.trim()) {
-      toast({
-        title: "Email Required",
-        description: "Please enter a valid email address to send the report.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (history.length <= 1 && history[0]?.pointSequence === 0) { 
-      toast({
-        title: "Email Send Failed",
-        description: "No match data available to send.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setIsExporting(true);
-    try {
-      const exportableHistory = history.filter(p => p.pointSequence > 0);
-      if (exportableHistory.length === 0) {
-        toast({
-          title: "Email Send Failed",
-          description: "No actual match points recorded to send.",
-          variant: "destructive",
-        });
-        setIsExporting(false);
-        return;
-      }
-
-      const result = await exportDataToSheetsAction(exportableHistory, email);
-      if (result.success) {
-        toast({
-          title: "Email Queued",
-          description: result.message,
-        });
-      } else {
-        toast({
-          title: "Email Send Failed",
-          description: result.message,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Email Error",
-        description: "An unexpected error occurred while attempting to send the email.",
-        variant: "destructive",
-      });
-      console.error("Export error:", error);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handlePrintChart = () => {
-    window.print();
-  };
-  
-  if (!isClient) {
-    return null; 
-  }
-
   let finalMatchStatusMessage = "";
   if (withdrawnPlayer === 'player') {
     finalMatchStatusMessage = `${opponentName} wins! ${playerName} withdrew from the match.`;
@@ -275,6 +212,97 @@ export default function Home() {
      finalMatchStatusMessage = "Match ended (Max sets reached). It's a draw based on sets!"; 
   }
 
+
+  const handleExport = () => {
+    if (!email.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter a valid email address to open an email draft.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const exportableHistory = history.filter(p => p.pointSequence > 0);
+    if (exportableHistory.length === 0 && !matchEffectivelyOver) {
+      toast({
+        title: "Cannot Create Email Draft",
+        description: "No match points recorded yet to include in an email.",
+        variant: "destructive",
+      });
+      return;
+    }
+     if (exportableHistory.length === 0 && matchEffectivelyOver && !withdrawnPlayer) {
+      toast({
+        title: "Cannot Create Email Draft",
+        description: "No actual match points were recorded to include in an email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+
+    const matchDate = new Date().toLocaleDateString("en-US", {
+      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    const subject = `Tennis Match Report: ${playerName} vs ${opponentName} - ${new Date().toLocaleDateString()}`;
+    
+    let body = `Match Report\n`;
+    body += `Date: ${matchDate}\n\n`;
+    body += `Players: ${playerName} vs ${opponentName}\n`;
+    if (finalMatchStatusMessage) {
+      body += `Outcome: ${finalMatchStatusMessage}\n`;
+    }
+    body += `Overall Sets: ${playerSets} - ${opponentSets}\n\n`;
+
+    if (setMarkers.length > 0) {
+      body += "Set Scores:\n";
+      setMarkers.forEach(set => {
+        body += `  Set ${set.setNumber}: ${set.setScore} (${set.winner === 'player' ? playerName : opponentName})\n`;
+      });
+      body += "\n";
+    } else if (matchEffectivelyOver) {
+        body += "Set Scores: No full sets completed or recorded before match conclusion.\n\n"
+    }
+
+
+    if (exportableHistory.length > 0) {
+      body += "Point History (Point: ScoreDifference):\n";
+      exportableHistory.forEach(p => {
+        body += `  Point ${p.pointSequence}: ${p.value}\n`;
+      });
+       body += "\n";
+    } else {
+        body += "Point History: No points recorded.\n\n";
+    }
+
+    body += "Note: The visual momentum chart can be exported separately as a PDF using the 'Export Chart to PDF' button in the app.\n";
+
+    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    try {
+        window.location.href = mailtoLink;
+        toast({
+            title: "Opening Email Client",
+            description: "Your default email client should open with a pre-filled draft.",
+        });
+    } catch (error) {
+        console.error("Failed to open mailto link:", error);
+        toast({
+            title: "Failed to Open Email Client",
+            description: "Could not automatically open your email client. Please copy the data manually if needed.",
+            variant: "destructive",
+        });
+    }
+  };
+
+  const handlePrintChart = () => {
+    window.print();
+  };
+  
+  if (!isClient) {
+    return null; 
+  }
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 bg-background text-foreground selection:bg-primary/20 selection:text-primary">
@@ -328,14 +356,14 @@ export default function Home() {
               {finalMatchStatusMessage && (
                 <div className="mt-4" id="final-match-score-summary-print">
                   <p className="text-2xl font-bold text-primary">{finalMatchStatusMessage}</p>
-                  {(finalMatchStatusMessage.includes("Wins the Match!") || finalMatchStatusMessage.includes("wins!")) && setMarkers.length > 0 && (
+                  {(finalMatchStatusMessage.includes("Wins the Match!") || finalMatchStatusMessage.includes("wins!")) && (
                     <div className="mt-2 text-base">
                       <p className="font-medium text-muted-foreground mb-1">Set Scores:</p>
-                      {setMarkers.map((set, index) => (
+                      {setMarkers.length > 0 ? setMarkers.map((set, index) => (
                         <p key={index} className="my-0.5 text-foreground">
                           Set {set.setNumber}: {set.setScore} ({set.winner === 'player' ? playerName : opponentName})
                         </p>
-                      ))}
+                      )) : <p className="my-0.5 text-foreground">No full sets completed.</p>}
                     </div>
                   )}
                 </div>
@@ -415,24 +443,19 @@ export default function Home() {
                   onClick={handleExport} 
                   variant="secondary" 
                   size="lg" 
-                  disabled={isExporting || currentPointNumber === 0 || !email.trim()}
+                  disabled={currentPointNumber === 0 || !email.trim()}
                   className="w-full shadow-md hover:shadow-lg transition-shadow mt-3"
                 >
-                  {isExporting ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <Mail className="mr-2 h-5 w-5" />
-                  )}
-                  {isExporting ? "Sending..." : "Email Match Report (Requires Email Below)"}
+                  <Mail className="mr-2 h-5 w-5" />
+                  Email Match Report (Requires Email Below)
                 </Button>
                  <Input 
                   type="email" 
                   id="exportEmailDuringMatch" 
-                  placeholder="Enter email for report (used at end of match)" 
+                  placeholder="Enter email for report" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   className="mt-1 shadow-sm w-full"
-                  disabled={isExporting} 
                 />
               </>
             ) : (
@@ -445,21 +468,16 @@ export default function Home() {
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)} 
                     className="flex-grow shadow-sm"
-                    disabled={isExporting} 
                   />
                   <Button 
                     onClick={handleExport} 
                     variant="secondary" 
                     size="lg" 
-                    disabled={isExporting || history.length <= 1 || !email.trim()}
+                    disabled={(history.length <= 1 && !withdrawnPlayer) || !email.trim()}
                     className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow" 
                   >
-                    {isExporting ? (
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    ) : (
-                      <Mail className="mr-2 h-5 w-5" />
-                    )}
-                    {isExporting ? "Sending..." : "Email Match Report"}
+                    <Mail className="mr-2 h-5 w-5" />
+                    Email Match Report
                   </Button>
                 </div>
                 <Button 
@@ -483,5 +501,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
