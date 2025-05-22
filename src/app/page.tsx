@@ -98,7 +98,7 @@ export default function Home() {
     const setScore = `${playerGames}:${opponentGames}`;
     setSetMarkers(prevMarkers => [
       ...prevMarkers,
-      { pointSequence: currentPointNumber, setNumber: currentSetNumber, setScore }
+      { pointSequence: currentPointNumber, setNumber: currentSetNumber, setScore, winner: 'player' }
     ]);
     
     const nextSetNumber = currentSetNumber + 1;
@@ -108,7 +108,7 @@ export default function Home() {
         description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${newPlayerSets}-${opponentSets}.`,
         duration: 5000,
       });
-      setCurrentSetNumber(nextSetNumber); // Advance set number to indicate match end if applicable
+      setCurrentSetNumber(nextSetNumber); 
     } else {
       toast({
         title: `Set ${currentSetNumber} to Player!`,
@@ -128,7 +128,7 @@ export default function Home() {
     const setScore = `${playerGames}:${opponentGames}`;
     setSetMarkers(prevMarkers => [
       ...prevMarkers,
-      { pointSequence: currentPointNumber, setNumber: currentSetNumber, setScore }
+      { pointSequence: currentPointNumber, setNumber: currentSetNumber, setScore, winner: 'opponent' }
     ]);
 
     const nextSetNumber = currentSetNumber + 1;
@@ -210,16 +210,16 @@ export default function Home() {
     matchStatusMessage = "Player Wins the Match!";
   } else if (opponentSets >= SETS_TO_WIN_MATCH) {
     matchStatusMessage = "Opponent Wins the Match!";
-  } else if (currentSetNumber > MAX_SETS && playerSets !== opponentSets) { // Tie-break set scenario or limit reached
+  } else if (currentSetNumber > MAX_SETS && playerSets !== opponentSets) { 
      matchStatusMessage = playerSets > opponentSets ? "Player Wins the Match!" : "Opponent Wins the Match!";
   } else if (currentSetNumber > MAX_SETS && playerSets === opponentSets) {
-     matchStatusMessage = "Match ended (Max sets reached). It's a draw based on sets!"; // Or handle as per rules
+     matchStatusMessage = "Match ended (Max sets reached). It's a draw based on sets!"; 
   }
 
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      <div className="w-full max-w-4xl space-y-8"> {/* Increased max-width for more buttons */}
+      <div className="w-full max-w-4xl space-y-8"> 
         <Card className="shadow-xl rounded-lg overflow-hidden">
           <CardHeader className="bg-card/50 p-6">
             <div className="flex items-center justify-center space-x-3">
@@ -285,7 +285,7 @@ export default function Home() {
               variant="secondary" 
               size="lg" 
               disabled={isExporting || history.length <= 1}
-              className="w-full col-span-2 sm:col-span-3 shadow-md hover:shadow-lg transition-shadow" // Span across full width
+              className="w-full col-span-2 sm:col-span-3 shadow-md hover:shadow-lg transition-shadow" 
             >
               {isExporting ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />

@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { DataPoint, GameMarker, SetMarker } from "@/lib/types"; // Added SetMarker
+import type { DataPoint, GameMarker, SetMarker } from "@/lib/types";
 import {
   ChartContainer,
   ChartTooltip,
@@ -23,7 +23,7 @@ import { useMemo } from "react";
 interface DataLineChartProps {
   data: DataPoint[];
   gameMarkers?: GameMarker[];
-  setMarkers?: SetMarker[]; // Added setMarkers prop
+  setMarkers?: SetMarker[];
 }
 
 const chartConfig = {
@@ -37,10 +37,17 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartProps) { // Added setMarkers to destructuring
+export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartProps) {
+  const chartDataForProcessing = useMemo(() => {
+    if (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0) {
+        return [data[0], {...data[0], pointSequence: data[0].pointSequence + 0.001}]; 
+    }
+    return data.length > 0 ? data : [{pointSequence: 0, value: 0}, {pointSequence: 0.001, value: 0}]; 
+  }, [data]);
+
   const yDomain: [number | 'auto', number | 'auto'] = useMemo(() => {
-    if (data.length === 0) return ['auto', 'auto'];
-    const values = data.map(p => p.value);
+    if (chartDataForProcessing.length === 0) return ['auto', 'auto'];
+    const values = chartDataForProcessing.map(p => p.value);
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
     
@@ -52,7 +59,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
         finalMin = minVal - padding;
         finalMax = maxVal + padding;
     } else {
-        if (maxVal - minVal < 2 * padding && data.length > 1) {
+        if (maxVal - minVal < 2 * padding && chartDataForProcessing.length > 1) {
              const mid = (minVal + maxVal) / 2;
              finalMin = mid - padding;
              finalMax = mid + padding;
@@ -61,15 +68,15 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
         }
     }
     return [finalMin, finalMax];
-  }, [data]);
+  }, [chartDataForProcessing]);
 
   const xTicks = useMemo(() => {
-    if (data.length < 2) return undefined; 
-    const allXValues = data.map(p => p.pointSequence);
+    if (chartDataForProcessing.length < 2) return undefined; 
+    const allXValues = chartDataForProcessing.map(p => p.pointSequence);
     if (gameMarkers) {
       gameMarkers.forEach(marker => allXValues.push(marker.pointSequence));
     }
-    if (setMarkers) { // Consider set markers for x-axis ticks
+    if (setMarkers) { 
       setMarkers.forEach(marker => allXValues.push(marker.pointSequence));
     }
     const maxPoint = Math.max(...allXValues, 0); 
@@ -92,15 +99,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
         }
     }
     return [...new Set(ticks.map(t => Math.round(t)))].filter(tick => tick >=0).sort((a,b) => a-b);
-  }, [data, gameMarkers, setMarkers]); // Added setMarkers dependency
-
-
-  const chartDataForProcessing = useMemo(() => {
-    if (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0) {
-        return [data[0], {...data[0], pointSequence: data[0].pointSequence + 0.001}]; 
-    }
-    return data.length > 0 ? data : [{pointSequence: 0, value: 0}, {pointSequence: 0.001, value: 0}]; 
-  }, [data]);
+  }, [chartDataForProcessing, gameMarkers, setMarkers]);
 
 
   const { positiveDataLine, negativeDataLine, enrichedDataLength } = useMemo(() => {
@@ -140,6 +139,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
       if (!existingPoint) {
         return acc.concat([current]);
       } else if (current.value === 0 && existingPoint.value !== 0) {
+        // If current point is an intercept (value 0) and existing point at same sequence is not, replace
         acc[acc.findIndex(item => item.pointSequence === current.pointSequence)] = current;
       }
       return acc;
@@ -153,12 +153,14 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
       if (point.value >= 0) {
         finalPositive.push(point);
       } else {
+        // Add a null break point for positive line if value is negative
         finalPositive.push({ pointSequence: point.pointSequence, value: null });
       }
 
       if (point.value <= 0) {
         finalNegative.push(point);
       } else {
+         // Add a null break point for negative line if value is positive
         finalNegative.push({ pointSequence: point.pointSequence, value: null });
       }
     });
@@ -187,7 +189,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
         accessibilityLayer
         data={chartDataForProcessing} 
         margin={{
-          top: 30, // Increased top margin for set/game score labels
+          top: 30, 
           right: 20,
           left: -10, 
           bottom: 5,
@@ -221,7 +223,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
             labelFormatter={(label, payload) => {
               if (payload && payload.length > 0 && payload[0].payload && payload[0].payload.pointSequence !== undefined) {
                 const ps = payload[0].payload.pointSequence;
-                if (ps === 0 || (data.length === 1 && ps === chartDataForProcessing[1]?.pointSequence) ) {
+                 if (ps === 0 || (data.length === 1 && ps === chartDataForProcessing[1]?.pointSequence) ) {
                      if (chartDataForProcessing.length === 2 && chartDataForProcessing[0].pointSequence === 0 && chartDataForProcessing[1].pointSequence === 0.001 && ps === 0.001) {
                         return "Start of Match";
                      }
@@ -233,7 +235,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
               return typeof label === 'number' ? `Point ${label.toFixed(2)}` : String(label);
             }}
             formatter={(value, name, props) => {
-                if (props.payload.value !== null) { 
+                if (props.payload.value !== null && props.payload.value !== undefined) { 
                     return [props.payload.value, "Score Diff."];
                 }
                 return []; 
@@ -279,36 +281,42 @@ export function DataLineChart({ data, gameMarkers, setMarkers }: DataLineChartPr
               fill="hsl(var(--accent))" 
               fontSize={12}
               fontWeight="bold"
-              dy={-15} // Adjusted dy to place above set markers if they coincide
+              dy={-15} 
               style={{ textAnchor: 'middle' }}
             />
           </ReferenceLine>
         ))}
-        {setMarkers?.map((marker, index) => (
-          <ReferenceLine
-            key={`set-marker-${index}-${marker.pointSequence}-${marker.setScore}`}
-            x={marker.pointSequence}
-            stroke="hsl(var(--primary))" // Use primary color for set markers
-            strokeWidth={2} // Slightly thicker line for sets
-            strokeDasharray="5 5" // Different dash pattern for sets
-            ifOverflow="visible"
-          >
-            <RechartsLabel
-              value={`Set ${marker.setNumber}: ${marker.setScore}`}
-              position="top"
-              fill="hsl(var(--primary-foreground))" // Use primary foreground for label text
-              fontSize={12}
-              fontWeight="bold"
-              dy={-2} // Positioned slightly above game markers
-              style={{ 
-                background: 'hsl(var(--primary))', 
-                padding: '2px 4px', 
-                borderRadius: '3px',
-                textAnchor: 'middle'
-              }}
-            />
-          </ReferenceLine>
-        ))}
+        {setMarkers?.map((marker, index) => {
+          const isPlayerWin = marker.winner === 'player';
+          const labelFill = isPlayerWin ? 'hsl(0, 0%, 100%)' : 'hsl(var(--destructive-foreground))';
+          const labelBackground = isPlayerWin ? 'hsl(120, 60%, 40%)' : 'hsl(var(--destructive))';
+
+          return (
+            <ReferenceLine
+              key={`set-marker-${index}-${marker.pointSequence}-${marker.setScore}-${marker.winner}`}
+              x={marker.pointSequence}
+              stroke="hsl(var(--primary))" 
+              strokeWidth={2} 
+              strokeDasharray="5 5" 
+              ifOverflow="visible"
+            >
+              <RechartsLabel
+                value={`Set ${marker.setNumber}: ${marker.setScore}`}
+                position="top"
+                fill={labelFill}
+                fontSize={12}
+                fontWeight="bold"
+                dy={-2} 
+                style={{ 
+                  background: labelBackground, 
+                  padding: '2px 4px', 
+                  borderRadius: '3px',
+                  textAnchor: 'middle'
+                }}
+              />
+            </ReferenceLine>
+          );
+        })}
       </LineChart>
     </ChartContainer>
   );

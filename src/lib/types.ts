@@ -13,4 +13,5 @@ export interface SetMarker {
   pointSequence: number;
   setNumber: number;
   setScore: string; // e.g., "6:2"
+  winner: 'player' | 'opponent'; // Indicates who won the set
 }
