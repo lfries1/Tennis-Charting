@@ -40,15 +40,6 @@ export function DataLineChart({ data }: DataLineChartProps) {
     }
     return data;
   }, [data]);
-
-
-  if (data.length === 0 || (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0 && data.every(p => p.value === data[0].value))) {
-    return (
-      <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 bg-muted/20 p-4 text-center text-muted-foreground shadow-inner">
-        <p>No points recorded yet. Use the 'Player Wins Point' or 'Opponent Wins Point' buttons to track the match and see the graph update.</p>
-      </div>
-    );
-  }
   
   const yDomain: [number | 'auto', number | 'auto'] = useMemo(() => {
     if (data.length === 0) return ['auto', 'auto'];
@@ -75,6 +66,13 @@ export function DataLineChart({ data }: DataLineChartProps) {
     return ticks.filter(tick => tick >=0);
   }, [data]);
 
+  if (data.length === 0 || (data.length === 1 && data[0].pointSequence === 0 && data[0].value === 0 && data.every(p => p.value === data[0].value))) {
+    return (
+      <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed border-muted-foreground/50 bg-muted/20 p-4 text-center text-muted-foreground shadow-inner">
+        <p>No points recorded yet. Use the 'Player Wins Point' or 'Opponent Wins Point' buttons to track the match and see the graph update.</p>
+      </div>
+    );
+  }
 
   return (
     <ChartContainer config={chartConfig} className="h-full w-full">
@@ -115,7 +113,7 @@ export function DataLineChart({ data }: DataLineChartProps) {
             hideLabel={false} 
             labelFormatter={(label, payload) => {
               if (payload && payload.length > 0 && payload[0].payload.pointSequence !== undefined) {
-                if (payload[0].payload.pointSequence === 0) return "Start of Match";
+                if (payload[0].payload.pointSequence === 0 || payload[0].payload.pointSequence === 0.001) return "Start of Match";
                 return `After Point ${payload[0].payload.pointSequence}`;
               }
               return label;
