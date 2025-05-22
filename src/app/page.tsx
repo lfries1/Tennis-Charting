@@ -48,10 +48,10 @@ export default function Home() {
   const matchEffectivelyOver = playerSets >= SETS_TO_WIN_MATCH || opponentSets >= SETS_TO_WIN_MATCH || (currentSetNumber > MAX_SETS && playerSets !== opponentSets) || !!withdrawnPlayer;
 
 
-  const processSetWin = (winner: 'player' | 'opponent') => {
-    if (matchEffectivelyOver) return; // Prevent processing if match already decided by withdrawal
+  const processSetWin = (winner: 'player' | 'opponent', finalPlayerGames: number, finalOpponentGames: number) => {
+    if (matchEffectivelyOver && !withdrawnPlayer) return; 
 
-    const setScore = `${playerGames}:${opponentGames}`;
+    const setScore = `${finalPlayerGames}:${finalOpponentGames}`;
     let newPlayerSets = playerSets;
     let newOpponentSets = opponentSets;
 
@@ -79,7 +79,7 @@ export default function Home() {
       toast({
         title: `${winnerName} Wins the Match!`,
         description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${newPlayerSets}-${newOpponentSets}.`,
-        variant: winner === 'opponent' && winnerName === opponentName ? "destructive" : undefined, // Ensure destructive only if opponent truly won
+        variant: winner === 'opponent' && winnerName === opponentName ? "destructive" : undefined, 
         duration: 5000,
       });
       setCurrentSetNumber(MAX_SETS + 1); 
@@ -139,8 +139,8 @@ export default function Home() {
     });
 
     const playerWinsSetCondition = (newPlayerGames >= 6 && newPlayerGames - opponentGames >= 2) || (newPlayerGames === 7 && (opponentGames === 5 || opponentGames === 6));
-    if (playerWinsSetCondition && currentSetNumber <= MAX_SETS && !matchEffectivelyOver) {
-      processSetWin('player');
+    if (playerWinsSetCondition && currentSetNumber <= MAX_SETS && !withdrawnPlayer) {
+      processSetWin('player', newPlayerGames, opponentGames);
     }
   };
 
@@ -160,19 +160,20 @@ export default function Home() {
     });
 
     const opponentWinsSetCondition = (newOpponentGames >= 6 && newOpponentGames - playerGames >= 2) || (newOpponentGames === 7 && (playerGames === 5 || playerGames === 6));
-    if (opponentWinsSetCondition && currentSetNumber <= MAX_SETS && !matchEffectivelyOver) {
-      processSetWin('opponent');
+    if (opponentWinsSetCondition && currentSetNumber <= MAX_SETS && !withdrawnPlayer) {
+      processSetWin('opponent', playerGames, newOpponentGames);
     }
   };
 
   const handlePlayerWithdraws = () => {
     if (matchEffectivelyOver) return;
     setWithdrawnPlayer('player');
-    setOpponentSets(SETS_TO_WIN_MATCH); // Opponent wins
-    setCurrentSetNumber(MAX_SETS + 1); // End match
+    const currentOpponentSets = opponentSets;
+    setOpponentSets(SETS_TO_WIN_MATCH); 
+    setCurrentSetNumber(MAX_SETS + 1); 
     toast({
       title: `${opponentName} Wins by Withdrawal!`,
-      description: `${playerName} withdrew from the match. Final sets: ${playerSets}-${SETS_TO_WIN_MATCH}.`,
+      description: `${playerName} withdrew from the match. Final sets determine by sets won before withdrawal. Current standing was Player: ${playerSets} - Opponent: ${currentOpponentSets}. Recorded as ${playerSets}-${SETS_TO_WIN_MATCH}.`,
       variant: "destructive",
       duration: 5000,
     });
@@ -181,11 +182,12 @@ export default function Home() {
   const handleOpponentWithdraws = () => {
     if (matchEffectivelyOver) return;
     setWithdrawnPlayer('opponent');
-    setPlayerSets(SETS_TO_WIN_MATCH); // Player wins
-    setCurrentSetNumber(MAX_SETS + 1); // End match
+    const currentPlayerSets = playerSets;
+    setPlayerSets(SETS_TO_WIN_MATCH); 
+    setCurrentSetNumber(MAX_SETS + 1); 
     toast({
       title: `${playerName} Wins by Withdrawal!`,
-      description: `${opponentName} withdrew from the match. Final sets: ${SETS_TO_WIN_MATCH}-${opponentSets}.`,
+      description: `${opponentName} withdrew from the match. Final sets determine by sets won before withdrawal. Current standing was Player: ${currentPlayerSets} - Opponent: ${opponentSets}. Recorded as ${SETS_TO_WIN_MATCH}-${opponentSets}.`,
       duration: 5000,
     });
   };
