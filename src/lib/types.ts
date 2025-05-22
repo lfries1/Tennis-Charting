@@ -1,4 +1,4 @@
 export interface DataPoint {
-  time: number; // Timestamp (e.g., Date.now())
-  value: number; // Counter value
+  pointSequence: number; // Sequential number of the point (e.g., 1st point, 2nd point)
+  value: number;         // Cumulative score difference (Player's points - Opponent's points)
 }

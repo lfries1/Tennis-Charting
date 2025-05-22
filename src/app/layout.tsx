@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({ // Corrected variable name
 });
 
 export const metadata: Metadata = {
-  title: 'Line Track App', // Updated title
-  description: 'Track and visualize counter data with Line Track', // Updated description
+  title: 'Tennis Momentum Tracker', // Updated title
+  description: 'Track and visualize momentum swings in a tennis match', // Updated description
 };
 
 export default function RootLayout({

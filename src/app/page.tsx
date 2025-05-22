@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,10 +8,11 @@ import { DataLineChart } from "@/components/DataLineChart";
 import type { DataPoint } from "@/lib/types";
 import { exportDataToSheetsAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, MinusCircle, SheetIcon, Loader2 } from "lucide-react";
+import { PlusCircle, MinusCircle, SheetIcon, Loader2, TrendingUp } from "lucide-react";
 
 export default function Home() {
-  const [counter, setCounter] = useState<number>(0);
+  const [scoreDifference, setScoreDifference] = useState<number>(0);
+  const [currentPointNumber, setCurrentPointNumber] = useState<number>(0);
   const [history, setHistory] = useState<DataPoint[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -20,38 +22,52 @@ export default function Home() {
     setIsClient(true);
     // Initialize with one data point if history is empty
     if (history.length === 0) {
-       setHistory([{ time: Date.now(), value: 0 }]);
+       setHistory([{ pointSequence: 0, value: 0 }]);
     }
-  }, []); // history dependency removed to avoid loop on initial setup
+  }, []);
 
-  const handleIncrement = () => {
-    setCounter((prevCounter) => {
-      const newCounter = prevCounter + 1;
-      setHistory((prevHistory) => [...prevHistory, { time: Date.now(), value: newCounter }]);
-      return newCounter;
-    });
+  const handlePlayerWin = () => {
+    const newPointNumber = currentPointNumber + 1;
+    const newScoreDifference = scoreDifference + 1;
+    
+    setCurrentPointNumber(newPointNumber);
+    setScoreDifference(newScoreDifference);
+    setHistory((prevHistory) => [...prevHistory, { pointSequence: newPointNumber, value: newScoreDifference }]);
   };
 
-  const handleDecrement = () => {
-    setCounter((prevCounter) => {
-      const newCounter = prevCounter - 1;
-      setHistory((prevHistory) => [...prevHistory, { time: Date.now(), value: newCounter }]);
-      return newCounter;
-    });
+  const handleOpponentWin = () => {
+    const newPointNumber = currentPointNumber + 1;
+    const newScoreDifference = scoreDifference - 1;
+
+    setCurrentPointNumber(newPointNumber);
+    setScoreDifference(newScoreDifference);
+    setHistory((prevHistory) => [...prevHistory, { pointSequence: newPointNumber, value: newScoreDifference }]);
   };
 
   const handleExport = async () => {
-    if (history.length === 0) {
+    if (history.length <= 1 && history[0]?.pointSequence === 0) { // Check if only initial point exists
       toast({
         title: "Export Failed",
-        description: "No data available to export.",
+        description: "No match data available to export.",
         variant: "destructive",
       });
       return;
     }
     setIsExporting(true);
     try {
-      const result = await exportDataToSheetsAction(history);
+      // Filter out the initial point {pointSequence: 0, value: 0} if it's the only one or if you only want to export actual game points
+      const exportableHistory = history.filter(p => p.pointSequence > 0);
+      if (exportableHistory.length === 0) {
+        toast({
+          title: "Export Failed",
+          description: "No actual match points recorded to export.",
+          variant: "destructive",
+        });
+        setIsExporting(false);
+        return;
+      }
+
+      const result = await exportDataToSheetsAction(exportableHistory);
       if (result.success) {
         toast({
           title: "Export Successful",
@@ -76,7 +92,6 @@ export default function Home() {
     }
   };
   
-  // Render a placeholder or null until client is mounted to avoid hydration issues with Date.now()
   if (!isClient) {
     return null; 
   }
@@ -86,17 +101,21 @@ export default function Home() {
       <div className="w-full max-w-3xl space-y-8">
         <Card className="shadow-xl rounded-lg overflow-hidden">
           <CardHeader className="bg-card/50 p-6">
-            <CardTitle className="text-center text-4xl font-bold tracking-tight text-primary">
-              Line Track
-            </CardTitle>
-            <CardDescription className="text-center text-lg text-muted-foreground">
-              Track and visualize your counter data in real-time.
+            <div className="flex items-center justify-center space-x-3">
+              <TrendingUp className="h-10 w-10 text-primary" />
+              <CardTitle className="text-center text-4xl font-bold tracking-tight text-primary">
+                Tennis Momentum
+              </CardTitle>
+            </div>
+            <CardDescription className="text-center text-lg text-muted-foreground pt-2">
+              Track points to visualize momentum swings. Increment for your win, decrement for opponent's win.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-8">
             <div className="text-center py-6 bg-muted/30 rounded-md shadow-inner">
-              <p className="text-xl text-muted-foreground mb-1">Current Value</p>
-              <p className="text-7xl font-extrabold text-primary tracking-tighter">{counter}</p>
+              <p className="text-xl text-muted-foreground mb-1">Current Score Difference</p>
+              <p className="text-7xl font-extrabold text-primary tracking-tighter">{scoreDifference}</p>
+              <p className="text-sm text-muted-foreground mt-1">After {currentPointNumber} {currentPointNumber === 1 ? 'point' : 'points'}</p>
             </div>
             
             <div className="h-[350px] md:h-[400px] w-full rounded-lg border border-border p-2 shadow-sm">
@@ -104,17 +123,17 @@ export default function Home() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row justify-center items-center gap-3 p-6 border-t bg-card/50">
-            <Button onClick={handleIncrement} size="lg" className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow">
-              <PlusCircle className="mr-2 h-5 w-5" /> Increment
+            <Button onClick={handlePlayerWin} size="lg" className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow">
+              <PlusCircle className="mr-2 h-5 w-5" /> Player Wins Point
             </Button>
-            <Button onClick={handleDecrement} variant="outline" size="lg" className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow">
-              <MinusCircle className="mr-2 h-5 w-5" /> Decrement
+            <Button onClick={handleOpponentWin} variant="outline" size="lg" className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow">
+              <MinusCircle className="mr-2 h-5 w-5" /> Opponent Wins Point
             </Button>
             <Button 
               onClick={handleExport} 
               variant="secondary" 
               size="lg" 
-              disabled={isExporting || history.length === 0}
+              disabled={isExporting || history.length <= 1}
               className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow"
             >
               {isExporting ? (
@@ -122,7 +141,7 @@ export default function Home() {
               ) : (
                 <SheetIcon className="mr-2 h-5 w-5" />
               )}
-              {isExporting ? "Exporting..." : "Export to Sheets"}
+              {isExporting ? "Exporting..." : "Export Match Data"}
             </Button>
           </CardFooter>
         </Card>
