@@ -5,15 +5,18 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataLineChart } from "@/components/DataLineChart";
-import type { DataPoint } from "@/lib/types";
+import type { DataPoint, GameMarker } from "@/lib/types";
 import { exportDataToSheetsAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, MinusCircle, SheetIcon, Loader2, TrendingUp } from "lucide-react";
+import { PlusCircle, MinusCircle, SheetIcon, Loader2, TrendingUp, Award, ShieldX } from "lucide-react";
 
 export default function Home() {
   const [scoreDifference, setScoreDifference] = useState<number>(0);
   const [currentPointNumber, setCurrentPointNumber] = useState<number>(0);
   const [history, setHistory] = useState<DataPoint[]>([]);
+  const [playerGames, setPlayerGames] = useState<number>(0);
+  const [opponentGames, setOpponentGames] = useState<number>(0);
+  const [gameMarkers, setGameMarkers] = useState<GameMarker[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
@@ -24,7 +27,7 @@ export default function Home() {
     if (history.length === 0) {
        setHistory([{ pointSequence: 0, value: 0 }]);
     }
-  }, []);
+  }, []); // history dependency removed to prevent re-initialization on history change
 
   const handlePlayerWin = () => {
     const newPointNumber = currentPointNumber + 1;
@@ -44,8 +47,37 @@ export default function Home() {
     setHistory((prevHistory) => [...prevHistory, { pointSequence: newPointNumber, value: newScoreDifference }]);
   };
 
+  const handlePlayerWinsGame = () => {
+    const newPlayerGames = playerGames + 1;
+    setPlayerGames(newPlayerGames);
+    const newGameScore = `${newPlayerGames}:${opponentGames}`;
+    setGameMarkers(prevMarkers => [
+      ...prevMarkers,
+      { pointSequence: currentPointNumber, gameScore: newGameScore }
+    ]);
+    toast({
+      title: "Game to Player!",
+      description: `Current game score: ${newGameScore} (Player : Opponent).`,
+    });
+  };
+
+  const handleOpponentWinsGame = () => {
+    const newOpponentGames = opponentGames + 1;
+    setOpponentGames(newOpponentGames);
+    const newGameScore = `${playerGames}:${newOpponentGames}`;
+    setGameMarkers(prevMarkers => [
+      ...prevMarkers,
+      { pointSequence: currentPointNumber, gameScore: newGameScore }
+    ]);
+    toast({
+      title: "Game to Opponent.",
+      description: `Current game score: ${newGameScore} (Player : Opponent).`,
+      variant: "destructive",
+    });
+  };
+
   const handleExport = async () => {
-    if (history.length <= 1 && history[0]?.pointSequence === 0) { // Check if only initial point exists
+    if (history.length <= 1 && history[0]?.pointSequence === 0) { 
       toast({
         title: "Export Failed",
         description: "No match data available to export.",
@@ -55,7 +87,6 @@ export default function Home() {
     }
     setIsExporting(true);
     try {
-      // Filter out the initial point {pointSequence: 0, value: 0} if it's the only one or if you only want to export actual game points
       const exportableHistory = history.filter(p => p.pointSequence > 0);
       if (exportableHistory.length === 0) {
         toast({
@@ -108,7 +139,7 @@ export default function Home() {
               </CardTitle>
             </div>
             <CardDescription className="text-center text-lg text-muted-foreground pt-2">
-              Track points to visualize momentum swings. Increment for your win, decrement for opponent's win.
+              Track points and games to visualize momentum swings.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-8">
@@ -116,25 +147,32 @@ export default function Home() {
               <p className="text-xl text-muted-foreground mb-1">Current Score Difference</p>
               <p className="text-7xl font-extrabold text-primary tracking-tighter">{scoreDifference}</p>
               <p className="text-sm text-muted-foreground mt-1">After {currentPointNumber} {currentPointNumber === 1 ? 'point' : 'points'}</p>
+              <p className="text-2xl font-semibold text-foreground mt-4">Games: {playerGames} - {opponentGames}</p>
             </div>
             
             <div className="h-[350px] md:h-[400px] w-full rounded-lg border border-border p-2 shadow-sm">
-              <DataLineChart data={history} />
+              <DataLineChart data={history} gameMarkers={gameMarkers} />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col sm:flex-row justify-center items-center gap-3 p-6 border-t bg-card/50">
-            <Button onClick={handlePlayerWin} size="lg" className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow">
+          <CardFooter className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-6 border-t bg-card/50">
+            <Button onClick={handlePlayerWin} size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow">
               <PlusCircle className="mr-2 h-5 w-5" /> Player Wins Point
             </Button>
-            <Button onClick={handleOpponentWin} variant="outline" size="lg" className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow">
+            <Button onClick={handleOpponentWin} variant="outline" size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow">
               <MinusCircle className="mr-2 h-5 w-5" /> Opponent Wins Point
+            </Button>
+            <Button onClick={handlePlayerWinsGame} size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow">
+              <Award className="mr-2 h-5 w-5" /> Player Wins Game
+            </Button>
+            <Button onClick={handleOpponentWinsGame} variant="destructive" size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow">
+              <ShieldX className="mr-2 h-5 w-5" /> Opponent Wins Game
             </Button>
             <Button 
               onClick={handleExport} 
               variant="secondary" 
               size="lg" 
               disabled={isExporting || history.length <= 1}
-              className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow"
+              className="w-full sm:col-span-2 shadow-md hover:shadow-lg transition-shadow" // Span across 2 columns on sm screens
             >
               {isExporting ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
