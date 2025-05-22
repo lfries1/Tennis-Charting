@@ -9,8 +9,7 @@ import { Label } from "@/components/ui/label";
 import { DataLineChart } from "@/components/DataLineChart";
 import type { DataPoint, GameMarker, SetMarker } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, MinusCircle, TrendingUp, Award, ShieldX, Download, LogOut, Mail } from "lucide-react";
-import html2canvas from 'html2canvas';
+import { PlusCircle, MinusCircle, TrendingUp, Award, ShieldX, Printer, LogOut, Mail } from "lucide-react";
 
 const MAX_SETS = 3;
 const SETS_TO_WIN_MATCH = 2;
@@ -212,7 +211,7 @@ export default function Home() {
   }
 
 
-  const handleExport = () => {
+  const handleEmailExport = () => {
     if (!email.trim()) {
       toast({
         title: "Email Required",
@@ -303,7 +302,7 @@ export default function Home() {
         body += "Point History: No points recorded.\n\n";
     }
 
-    body += "Visual Momentum Chart:\nThe visual momentum chart provides a great overview of the match flow. Please use the 'Export Chart to JPEG' button in the app to download an image of the chart. You can then attach this image to your email if desired.\n";
+    body += "Visual Momentum Chart:\nThe visual momentum chart provides a great overview of the match flow. Please use the 'Export Chart to PDF' button in the app to generate a PDF of the chart. You can then attach this PDF to your email if desired.\n";
 
     const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
@@ -323,12 +322,12 @@ export default function Home() {
     }
   };
 
-  const handleExportChartToJPEG = async () => {
+  const handlePrintChart = () => {
     const chartElement = document.getElementById('chart-to-print');
     if (!chartElement) {
       toast({
         title: "Error",
-        description: "Chart element not found.",
+        description: "Chart element not found for printing.",
         variant: "destructive",
       });
       return;
@@ -338,48 +337,13 @@ export default function Home() {
 
     if (isHistoryEffectivelyEmpty) {
        toast({
-        title: "Cannot Export Chart",
-        description: "No meaningful chart data to export.",
+        title: "Cannot Print Chart",
+        description: "No meaningful chart data to print.",
         variant: "destructive",
       });
       return;
     }
-
-    try {
-      const canvas = await html2canvas(chartElement, {
-        scale: 2, 
-        useCORS: true,
-        logging: false,
-        width: chartElement.scrollWidth, // Use the full scrollable width
-        height: chartElement.scrollHeight, // Use the full scrollable height
-        onclone: (document) => {
-          const clonedChartElement = document.getElementById('chart-to-print');
-          if (clonedChartElement) {
-            clonedChartElement.style.backgroundColor = 'white';
-          }
-        }
-      });
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9); 
-      
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = `tennis-momentum-chart-${playerName}-vs-${opponentName}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast({
-        title: "Chart Exported",
-        description: "The chart has been downloaded as a JPEG image.",
-      });
-    } catch (error) {
-      console.error("Error exporting chart to JPEG:", error);
-      toast({
-        title: "Export Failed",
-        description: "Could not export the chart as JPEG.",
-        variant: "destructive",
-      });
-    }
+    window.print();
   };
   
   if (!isClient) {
@@ -522,7 +486,7 @@ export default function Home() {
                 </div>
                 
                 <Button 
-                  onClick={handleExport} 
+                  onClick={handleEmailExport} 
                   variant="secondary" 
                   size="lg" 
                   disabled={currentPointNumber === 0 || !email.trim()}
@@ -552,7 +516,7 @@ export default function Home() {
                     className="flex-grow shadow-sm"
                   />
                   <Button 
-                    onClick={handleExport} 
+                    onClick={handleEmailExport} 
                     variant="secondary" 
                     size="lg" 
                     disabled={(history.length <= 1 && !withdrawnPlayer) || !email.trim()}
@@ -563,21 +527,21 @@ export default function Home() {
                   </Button>
                 </div>
                 <Button 
-                  onClick={handleExportChartToJPEG} 
+                  onClick={handlePrintChart} 
                   variant="outline" 
                   size="lg" 
                   disabled={history.length === 0 || (history.length === 1 && history[0].pointSequence === 0 && history[0].value === 0)}
                   className="w-full shadow-md hover:shadow-lg transition-shadow" 
                 >
-                  <Download className="mr-2 h-5 w-5" />
-                  Export Chart to JPEG
+                  <Printer className="mr-2 h-5 w-5" />
+                  Export Chart to PDF
                 </Button>
               </div>
             )}
           </CardFooter>
         </Card>
         <p className="text-center text-sm text-muted-foreground print-hide-tip">
-          Tip: For PDF, use your browser's "Print" (Ctrl/Cmd + P) and select "Save as PDF". The JPEG button downloads an image.
+          Tip: For PDF, use your browser's "Print" (Ctrl/Cmd + P) and select "Save as PDF".
         </p>
       </div>
     </main>
