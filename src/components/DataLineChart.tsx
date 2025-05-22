@@ -47,6 +47,19 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
     return data.length > 0 ? data : [{pointSequence: 0, value: 0}, {pointSequence: 0.001, value: 0}]; 
   }, [data]);
 
+  const { maxPointValue, xTickValues } = useMemo(() => {
+    const allXValues: number[] = chartDataForProcessing.map(p => p.pointSequence);
+    if (gameMarkers) {
+      gameMarkers.forEach(marker => allXValues.push(marker.pointSequence));
+    }
+    if (setMarkers) {
+      setMarkers.forEach(marker => allXValues.push(marker.pointSequence));
+    }
+    const currentMaxPoint = Math.max(...allXValues, 0);
+    const ticks = Array.from({ length: Math.floor(currentMaxPoint) + 1 }, (_, i) => i);
+    return { maxPointValue: currentMaxPoint, xTickValues: ticks };
+  }, [chartDataForProcessing, gameMarkers, setMarkers]);
+
   const yDomain: [number | 'auto', number | 'auto'] = useMemo(() => {
     if (chartDataForProcessing.length === 0) return ['auto', 'auto'];
     const values = chartDataForProcessing.map(p => p.value);
@@ -71,38 +84,6 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
     }
     return [finalMin, finalMax];
   }, [chartDataForProcessing]);
-
-  const xTicks = useMemo(() => {
-    if (chartDataForProcessing.length < 2) return undefined; 
-    const allXValues = chartDataForProcessing.map(p => p.pointSequence);
-    if (gameMarkers) {
-      gameMarkers.forEach(marker => allXValues.push(marker.pointSequence));
-    }
-    if (setMarkers) { 
-      setMarkers.forEach(marker => allXValues.push(marker.pointSequence));
-    }
-    const maxPoint = Math.max(...allXValues, 0); 
-
-    if (maxPoint <= 10) { 
-        const ticks = Array.from({length: Math.floor(maxPoint) + 1}, (_, i) => i);
-        if (!ticks.includes(maxPoint) && maxPoint > 0 && Number.isInteger(maxPoint)) ticks.push(maxPoint);
-        return ticks.filter(tick => tick >=0 );
-    }
-    const interval = Math.max(1, Math.floor(maxPoint / 10));
-    const ticks = [];
-    for (let i = 0; i <= maxPoint; i += interval) {
-      ticks.push(i);
-    }
-    if (!ticks.includes(maxPoint) && maxPoint > 0) { 
-        if (ticks.length > 0 && maxPoint - ticks[ticks.length-1] < interval / 2) {
-            ticks[ticks.length-1] = Math.ceil(maxPoint); 
-        } else {
-            ticks.push(Math.ceil(maxPoint));
-        }
-    }
-    return [...new Set(ticks.map(t => Math.round(t)))].filter(tick => tick >=0).sort((a,b) => a-b);
-  }, [chartDataForProcessing, gameMarkers, setMarkers]);
-
 
   const { positiveDataLine, negativeDataLine, enrichedDataLength } = useMemo(() => {
     if (chartDataForProcessing.length === 0) {
@@ -141,6 +122,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
       if (!existingPoint) {
         return acc.concat([current]);
       } else if (current.value === 0 && existingPoint.value !== 0) {
+        // Replace if new point is a zero-crossing and existing isn't, or if it's more precise (though not handled here)
         acc[acc.findIndex(item => item.pointSequence === current.pointSequence)] = current;
       }
       return acc;
@@ -181,12 +163,17 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
   }
 
   const showDots = enrichedDataLength < 50 || data.length === 1; 
+  const tickPixelSpacing = 30; 
+  const calculatedChartWidth = (Math.floor(maxPointValue) + 1) * tickPixelSpacing;
+  const chartRenderWidth = Math.max(600, calculatedChartWidth);
+
 
   return (
     <ChartContainer config={chartConfig} className="h-full w-full">
       <LineChart
         accessibilityLayer
         data={chartDataForProcessing} 
+        width={chartRenderWidth}
         margin={{
           top: 30, 
           right: 20,
@@ -202,9 +189,10 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
           axisLine={false}
           tickMargin={8}
           stroke="hsl(var(--muted-foreground))"
-          domain={['dataMin', 'dataMax']}
+          domain={[0, maxPointValue > 0 ? maxPointValue : 1]} // Ensure domain doesn't collapse if maxPointValue is 0
+          ticks={xTickValues}
+          interval={0} 
           allowDecimals={false} 
-          ticks={xTicks}
         />
         <YAxis
           tickLine={false}
@@ -287,7 +275,7 @@ export function DataLineChart({ data, gameMarkers, setMarkers, playerName, oppon
         ))}
         {setMarkers?.map((marker, index) => {
           const isPlayerWin = marker.winner === 'player';
-          const labelTextFill = isPlayerWin ? 'hsl(120, 60%, 35%)' : 'hsl(var(--destructive))';
+          const labelTextFill = isPlayerWin ? 'hsl(120, 70%, 40%)' : 'hsl(var(--destructive))'; // Green for player, red for opponent
           const winnerDisplayName = isPlayerWin ? playerName : opponentName;
           const labelValue = `Set ${marker.setNumber}: ${marker.setScore} (${winnerDisplayName})`;
 

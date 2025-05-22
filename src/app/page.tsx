@@ -267,7 +267,6 @@ export default function Home() {
     if (exportableHistory.length > 0) {
       body += "Point History (Point: ScoreDifference (Current Set Games)):\n";
       
-      // Ensure markers are sorted by pointSequence for correct processing logic
       const sortedGameMarkers = [...gameMarkers].sort((a, b) => a.pointSequence - b.pointSequence);
       const sortedSetMarkers = [...setMarkers].sort((a, b) => a.pointSequence - b.pointSequence);
 
@@ -275,30 +274,24 @@ export default function Home() {
         let emailCurrentSetNumber = 1;
         let lastSetMarkerPointSequenceForGameReset = 0;
 
-        // Determine the set number for the current point p
         for (const setMarker of sortedSetMarkers) {
             if (p.pointSequence > setMarker.pointSequence) {
-                // Point p is in a set *after* this setMarker concluded a set.
                 emailCurrentSetNumber = setMarker.setNumber + 1;
                 lastSetMarkerPointSequenceForGameReset = setMarker.pointSequence;
             } else {
-                // Point p is within the set that this setMarker will conclude, or an earlier one.
                 break;
             }
         }
 
         let emailCurrentPlayerGames = 0;
         let emailCurrentOpponentGames = 0;
-        // Determine the game score for point p within its current set context
         for (const gameMarker of sortedGameMarkers) {
             if (gameMarker.pointSequence > lastSetMarkerPointSequenceForGameReset && gameMarker.pointSequence < p.pointSequence) {
-                // This game was completed before point p, and within the current set context.
                 const [playerGamesStr, opponentGamesStr] = gameMarker.gameScore.split(':');
                 emailCurrentPlayerGames = parseInt(playerGamesStr, 10);
                 emailCurrentOpponentGames = parseInt(opponentGamesStr, 10);
             }
             if (gameMarker.pointSequence >= p.pointSequence) {
-                // Game markers at or after p are not relevant for game score *during* p.
                 break;
             }
         }
@@ -403,7 +396,7 @@ export default function Home() {
               )}
             </div>
             
-            <div id="chart-to-print" className="h-[350px] md:h-[400px] w-full rounded-lg border border-border p-2 shadow-sm bg-background">
+            <div id="chart-to-print" className="h-[350px] md:h-[400px] w-full rounded-lg border border-border p-2 shadow-sm bg-background overflow-x-auto">
               <DataLineChart 
                 data={history} 
                 gameMarkers={gameMarkers} 
