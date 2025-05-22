@@ -8,7 +8,7 @@ import { DataLineChart } from "@/components/DataLineChart";
 import type { DataPoint, GameMarker, SetMarker } from "@/lib/types";
 import { exportDataToSheetsAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, MinusCircle, SheetIcon, Loader2, TrendingUp, Award, ShieldX, Trophy, Skull } from "lucide-react";
+import { PlusCircle, MinusCircle, SheetIcon, Loader2, TrendingUp, Award, ShieldX } from "lucide-react";
 
 const MAX_SETS = 3;
 const SETS_TO_WIN_MATCH = 2;
@@ -38,7 +38,8 @@ export default function Home() {
     }
   }, []);
 
-  const matchOver = playerSets >= SETS_TO_WIN_MATCH || opponentSets >= SETS_TO_WIN_MATCH || currentSetNumber > MAX_SETS;
+  const matchOver = playerSets >= SETS_TO_WIN_MATCH || opponentSets >= SETS_TO_WIN_MATCH || (currentSetNumber > MAX_SETS && playerSets !== opponentSets);
+
 
   const handlePlayerWin = () => {
     if (matchOver) return;
@@ -73,6 +74,44 @@ export default function Home() {
       title: "Game to Player!",
       description: `Set ${currentSetNumber} game score: ${newGameScore} (Player : Opponent).`,
     });
+
+    // Check for set win
+    const playerWinsSetCondition = (newPlayerGames === 6 && opponentGames <= 4) || (newPlayerGames === 7 && (opponentGames === 5 || opponentGames === 6));
+    if (playerWinsSetCondition) {
+      const newPlayerSets = playerSets + 1;
+      setPlayerSets(newPlayerSets);
+      const setScore = `${newPlayerGames}:${opponentGames}`;
+      setSetMarkers(prevMarkers => [
+        ...prevMarkers,
+        { pointSequence: currentPointNumber, setNumber: currentSetNumber, setScore, winner: 'player' }
+      ]);
+      
+      const nextSetNumber = currentSetNumber + 1;
+      if (newPlayerSets >= SETS_TO_WIN_MATCH || (nextSetNumber > MAX_SETS && newPlayerSets !== opponentSets) ) {
+        toast({
+          title: "Player Wins the Match!",
+          description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${newPlayerSets}-${opponentSets}.`,
+          duration: 5000,
+        });
+         setCurrentSetNumber(MAX_SETS + 1); // Mark match as definitively over in terms of sets display
+      } else if (nextSetNumber > MAX_SETS && newPlayerSets === opponentSets) {
+         toast({
+          title: "Match Ends - Max Sets Reached!",
+          description: `Set ${currentSetNumber} score: ${setScore}. Overall sets: ${newPlayerSets}-${opponentSets}. It's a draw based on sets!`,
+          duration: 5000,
+        });
+        setCurrentSetNumber(nextSetNumber);
+      }
+      else {
+        toast({
+          title: `Set ${currentSetNumber} to Player!`,
+          description: `Set score: ${setScore}. Starting Set ${nextSetNumber}.`,
+        });
+        setCurrentSetNumber(nextSetNumber);
+        setPlayerGames(0);
+        setOpponentGames(0);
+      }
+    }
   };
 
   const handleOpponentWinsGame = () => {
@@ -89,78 +128,48 @@ export default function Home() {
       description: `Set ${currentSetNumber} game score: ${newGameScore} (Player : Opponent).`,
       variant: "destructive",
     });
-  };
 
-  const canPlayerWinCurrentSet = 
-    (playerGames === 6 && opponentGames <= 4) || 
-    (playerGames === 7 && (opponentGames === 5 || opponentGames === 6));
+    // Check for set win
+    const opponentWinsSetCondition = (newOpponentGames === 6 && playerGames <= 4) || (newOpponentGames === 7 && (playerGames === 5 || playerGames === 6));
+    if (opponentWinsSetCondition) {
+      const newOpponentSets = opponentSets + 1;
+      setOpponentSets(newOpponentSets);
+      const setScore = `${playerGames}:${newOpponentGames}`;
+      setSetMarkers(prevMarkers => [
+        ...prevMarkers,
+        { pointSequence: currentPointNumber, setNumber: currentSetNumber, setScore, winner: 'opponent' }
+      ]);
 
-  const canOpponentWinCurrentSet = 
-    (opponentGames === 6 && playerGames <= 4) || 
-    (opponentGames === 7 && (playerGames === 5 || playerGames === 6));
-
-  const handlePlayerWinsSet = () => {
-    if (matchOver || !canPlayerWinCurrentSet) return;
-    const newPlayerSets = playerSets + 1;
-    setPlayerSets(newPlayerSets);
-    const setScore = `${playerGames}:${opponentGames}`;
-    setSetMarkers(prevMarkers => [
-      ...prevMarkers,
-      { pointSequence: currentPointNumber, setNumber: currentSetNumber, setScore, winner: 'player' }
-    ]);
-    
-    const nextSetNumber = currentSetNumber + 1;
-    if (newPlayerSets >= SETS_TO_WIN_MATCH || nextSetNumber > MAX_SETS) {
-      toast({
-        title: "Player Wins the Match!",
-        description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${newPlayerSets}-${opponentSets}.`,
-        duration: 5000,
-      });
-      setCurrentSetNumber(nextSetNumber); 
-    } else {
-      toast({
-        title: `Set ${currentSetNumber} to Player!`,
-        description: `Set score: ${setScore}. Starting Set ${nextSetNumber}.`,
-      });
-      setCurrentSetNumber(nextSetNumber);
+      const nextSetNumber = currentSetNumber + 1;
+      if (newOpponentSets >= SETS_TO_WIN_MATCH || (nextSetNumber > MAX_SETS && newOpponentSets !== playerSets)) {
+        toast({
+          title: "Opponent Wins the Match.",
+          description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${playerSets}-${newOpponentSets}.`,
+          variant: "destructive",
+          duration: 5000,
+        });
+        setCurrentSetNumber(MAX_SETS + 1); // Mark match as definitively over
+      } else if (nextSetNumber > MAX_SETS && newOpponentSets === playerSets) {
+         toast({
+          title: "Match Ends - Max Sets Reached!",
+          description: `Set ${currentSetNumber} score: ${setScore}. Overall sets: ${playerSets}-${newOpponentSets}. It's a draw based on sets!`,
+          variant: "destructive",
+          duration: 5000,
+        });
+        setCurrentSetNumber(nextSetNumber);
+      }
+      else {
+        toast({
+          title: `Set ${currentSetNumber} to Opponent.`,
+          description: `Set score: ${setScore}. Starting Set ${nextSetNumber}.`,
+          variant: "destructive",
+        });
+        setCurrentSetNumber(nextSetNumber);
+        setPlayerGames(0);
+        setOpponentGames(0);
+      }
     }
-    
-    setPlayerGames(0);
-    setOpponentGames(0);
   };
-
-  const handleOpponentWinsSet = () => {
-    if (matchOver || !canOpponentWinCurrentSet) return;
-    const newOpponentSets = opponentSets + 1;
-    setOpponentSets(newOpponentSets);
-    const setScore = `${playerGames}:${opponentGames}`;
-    setSetMarkers(prevMarkers => [
-      ...prevMarkers,
-      { pointSequence: currentPointNumber, setNumber: currentSetNumber, setScore, winner: 'opponent' }
-    ]);
-
-    const nextSetNumber = currentSetNumber + 1;
-    if (newOpponentSets >= SETS_TO_WIN_MATCH || nextSetNumber > MAX_SETS) {
-      toast({
-        title: "Opponent Wins the Match.",
-        description: `Final set score (Set ${currentSetNumber}): ${setScore}. Overall sets: ${playerSets}-${newOpponentSets}.`,
-        variant: "destructive",
-        duration: 5000,
-      });
-       setCurrentSetNumber(nextSetNumber);
-    } else {
-      toast({
-        title: `Set ${currentSetNumber} to Opponent.`,
-        description: `Set score: ${setScore}. Starting Set ${nextSetNumber}.`,
-        variant: "destructive",
-      });
-      setCurrentSetNumber(nextSetNumber);
-    }
-
-    setPlayerGames(0);
-    setOpponentGames(0);
-  };
-
 
   const handleExport = async () => {
     if (history.length <= 1 && history[0]?.pointSequence === 0) { 
@@ -218,10 +227,14 @@ export default function Home() {
     matchStatusMessage = "Player Wins the Match!";
   } else if (opponentSets >= SETS_TO_WIN_MATCH) {
     matchStatusMessage = "Opponent Wins the Match!";
-  } else if (currentSetNumber > MAX_SETS && playerSets !== opponentSets) { 
-     matchStatusMessage = playerSets > opponentSets ? "Player Wins the Match!" : "Opponent Wins the Match!";
-  } else if (currentSetNumber > MAX_SETS && playerSets === opponentSets) {
-     matchStatusMessage = "Match ended (Max sets reached). It's a draw based on sets!"; 
+  } else if (currentSetNumber > MAX_SETS) {
+     if (playerSets > opponentSets) {
+        matchStatusMessage = "Player Wins the Match!";
+     } else if (opponentSets > playerSets) {
+        matchStatusMessage = "Opponent Wins the Match!";
+     } else {
+        matchStatusMessage = "Match ended (Max sets reached). It's a draw based on sets!"; 
+     }
   }
 
 
@@ -258,7 +271,7 @@ export default function Home() {
               <DataLineChart data={history} gameMarkers={gameMarkers} setMarkers={setMarkers} />
             </div>
           </CardContent>
-          <CardFooter className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-6 border-t bg-card/50">
+          <CardFooter className="grid grid-cols-2 gap-3 p-6 border-t bg-card/50">
             <Button onClick={handlePlayerWin} size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow" disabled={matchOver}>
               <PlusCircle className="mr-2 h-5 w-5" /> Player Wins Point
             </Button>
@@ -271,29 +284,12 @@ export default function Home() {
             <Button onClick={handleOpponentWinsGame} variant="destructive" size="lg" className="w-full shadow-md hover:shadow-lg transition-shadow" disabled={matchOver}>
               <ShieldX className="mr-2 h-5 w-5" /> Opponent Wins Game
             </Button>
-             <Button 
-              onClick={handlePlayerWinsSet} 
-              size="lg" 
-              className="w-full shadow-md hover:shadow-lg transition-shadow bg-green-500 hover:bg-green-600 text-white" 
-              disabled={matchOver || currentSetNumber > MAX_SETS || !canPlayerWinCurrentSet}
-            >
-              <Trophy className="mr-2 h-5 w-5" /> Player Wins Set
-            </Button>
-            <Button 
-              onClick={handleOpponentWinsSet} 
-              variant="destructive" 
-              size="lg" 
-              className="w-full shadow-md hover:shadow-lg transition-shadow border-red-700 bg-red-700 hover:bg-red-800 text-white" 
-              disabled={matchOver || currentSetNumber > MAX_SETS || !canOpponentWinCurrentSet}
-            >
-              <Skull className="mr-2 h-5 w-5" /> Opponent Wins Set
-            </Button>
             <Button 
               onClick={handleExport} 
               variant="secondary" 
               size="lg" 
               disabled={isExporting || history.length <= 1}
-              className="w-full col-span-2 sm:col-span-3 shadow-md hover:shadow-lg transition-shadow" 
+              className="w-full col-span-2 shadow-md hover:shadow-lg transition-shadow" 
             >
               {isExporting ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -311,3 +307,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
