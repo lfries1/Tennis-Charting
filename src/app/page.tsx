@@ -10,7 +10,7 @@ import { DataLineChart } from "@/components/DataLineChart";
 import type { DataPoint, GameMarker, SetMarker } from "@/lib/types";
 import { exportDataToSheetsAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, MinusCircle, SheetIcon, Loader2, TrendingUp, Award, ShieldX, Printer, LogOut } from "lucide-react";
+import { PlusCircle, MinusCircle, Loader2, TrendingUp, Award, ShieldX, Printer, LogOut, Mail } from "lucide-react";
 
 const MAX_SETS = 3;
 const SETS_TO_WIN_MATCH = 2;
@@ -18,6 +18,7 @@ const SETS_TO_WIN_MATCH = 2;
 export default function Home() {
   const [playerName, setPlayerName] = useState<string>("Player 1");
   const [opponentName, setOpponentName] = useState<string>("Player 2");
+  const [email, setEmail] = useState<string>("");
 
   const [scoreDifference, setScoreDifference] = useState<number>(0);
   const [currentPointNumber, setCurrentPointNumber] = useState<number>(0);
@@ -193,10 +194,18 @@ export default function Home() {
   };
 
   const handleExport = async () => {
+    if (!email.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter a valid email address to send the report.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (history.length <= 1 && history[0]?.pointSequence === 0) { 
       toast({
-        title: "Export Failed",
-        description: "No match data available to export.",
+        title: "Email Send Failed",
+        description: "No match data available to send.",
         variant: "destructive",
       });
       return;
@@ -206,31 +215,31 @@ export default function Home() {
       const exportableHistory = history.filter(p => p.pointSequence > 0);
       if (exportableHistory.length === 0) {
         toast({
-          title: "Export Failed",
-          description: "No actual match points recorded to export.",
+          title: "Email Send Failed",
+          description: "No actual match points recorded to send.",
           variant: "destructive",
         });
         setIsExporting(false);
         return;
       }
 
-      const result = await exportDataToSheetsAction(exportableHistory);
+      const result = await exportDataToSheetsAction(exportableHistory, email);
       if (result.success) {
         toast({
-          title: "Export Successful",
+          title: "Email Queued",
           description: result.message,
         });
       } else {
         toast({
-          title: "Export Failed",
+          title: "Email Send Failed",
           description: result.message,
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "Export Error",
-        description: "An unexpected error occurred during export.",
+        title: "Email Error",
+        description: "An unexpected error occurred while attempting to send the email.",
         variant: "destructive",
       });
       console.error("Export error:", error);
@@ -343,94 +352,116 @@ export default function Home() {
               />
             </div>
           </CardContent>
-          <CardFooter className="grid grid-cols-2 gap-3 p-6 border-t bg-card/50">
+          <CardFooter className="grid grid-cols-1 gap-3 p-6 border-t bg-card/50">
             {!matchEffectivelyOver ? (
               <>
-                <Button 
-                  onClick={handlePlayerWin} 
-                  size="lg" 
-                  className="w-full shadow-md hover:shadow-lg transition-shadow bg-orange-500 hover:bg-orange-600 text-white" 
-                  disabled={matchEffectivelyOver}
-                >
-                  <PlusCircle className="mr-2 h-5 w-5" /> {playerName} Wins Point
-                </Button>
-                <Button 
-                  onClick={handleOpponentWin} 
-                  variant="destructive" 
-                  size="lg" 
-                  className="w-full shadow-md hover:shadow-lg transition-shadow" 
-                  disabled={matchEffectivelyOver}
-                >
-                  <MinusCircle className="mr-2 h-5 w-5" /> {opponentName} Wins Point
-                </Button>
-                <Button 
-                  onClick={handlePlayerWinsGame} 
-                  size="lg" 
-                  className="w-full shadow-md hover:shadow-lg transition-shadow bg-orange-500 hover:bg-orange-600 text-white" 
-                  disabled={matchEffectivelyOver}
-                >
-                  <Award className="mr-2 h-5 w-5" /> {playerName} Wins Game
-                </Button>
-                <Button 
-                  onClick={handleOpponentWinsGame} 
-                  variant="destructive" 
-                  size="lg" 
-                  className="w-full shadow-md hover:shadow-lg transition-shadow" 
-                  disabled={matchEffectivelyOver}
-                >
-                  <ShieldX className="mr-2 h-5 w-5" /> {opponentName} Wins Game
-                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                    <Button 
+                      onClick={handlePlayerWin} 
+                      size="lg" 
+                      className="w-full shadow-md hover:shadow-lg transition-shadow bg-orange-500 hover:bg-orange-600 text-white" 
+                      disabled={matchEffectivelyOver}
+                    >
+                      <PlusCircle className="mr-2 h-5 w-5" /> {playerName} Wins Point
+                    </Button>
+                    <Button 
+                      onClick={handleOpponentWin} 
+                      variant="destructive" 
+                      size="lg" 
+                      className="w-full shadow-md hover:shadow-lg transition-shadow" 
+                      disabled={matchEffectivelyOver}
+                    >
+                      <MinusCircle className="mr-2 h-5 w-5" /> {opponentName} Wins Point
+                    </Button>
+                    <Button 
+                      onClick={handlePlayerWinsGame} 
+                      size="lg" 
+                      className="w-full shadow-md hover:shadow-lg transition-shadow bg-orange-500 hover:bg-orange-600 text-white" 
+                      disabled={matchEffectivelyOver}
+                    >
+                      <Award className="mr-2 h-5 w-5" /> {playerName} Wins Game
+                    </Button>
+                    <Button 
+                      onClick={handleOpponentWinsGame} 
+                      variant="destructive" 
+                      size="lg" 
+                      className="w-full shadow-md hover:shadow-lg transition-shadow" 
+                      disabled={matchEffectivelyOver}
+                    >
+                      <ShieldX className="mr-2 h-5 w-5" /> {opponentName} Wins Game
+                    </Button>
 
-                <Button
-                  onClick={handlePlayerWithdraws}
-                  variant="outline"
-                  size="lg"
-                  className="w-full shadow-md hover:shadow-lg transition-shadow border-amber-500 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
-                  disabled={matchEffectivelyOver}
-                >
-                  <LogOut className="mr-2 h-5 w-5" /> {playerName} Withdraws
-                </Button>
-                <Button
-                  onClick={handleOpponentWithdraws}
-                  variant="outline"
-                  size="lg"
-                  className="w-full shadow-md hover:shadow-lg transition-shadow border-amber-500 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
-                  disabled={matchEffectivelyOver}
-                >
-                  <LogOut className="mr-2 h-5 w-5" /> {opponentName} Withdraws
-                </Button>
+                    <Button
+                      onClick={handlePlayerWithdraws}
+                      variant="outline"
+                      size="lg"
+                      className="w-full shadow-md hover:shadow-lg transition-shadow border-amber-500 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
+                      disabled={matchEffectivelyOver}
+                    >
+                      <LogOut className="mr-2 h-5 w-5" /> {playerName} Withdraws
+                    </Button>
+                    <Button
+                      onClick={handleOpponentWithdraws}
+                      variant="outline"
+                      size="lg"
+                      className="w-full shadow-md hover:shadow-lg transition-shadow border-amber-500 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
+                      disabled={matchEffectivelyOver}
+                    >
+                      <LogOut className="mr-2 h-5 w-5" /> {opponentName} Withdraws
+                    </Button>
+                </div>
                 
                 <Button 
                   onClick={handleExport} 
                   variant="secondary" 
                   size="lg" 
-                  disabled={isExporting || history.length <= 1}
-                  className="w-full col-span-2 shadow-md hover:shadow-lg transition-shadow" 
+                  disabled={isExporting || currentPointNumber === 0 || !email.trim()}
+                  className="w-full shadow-md hover:shadow-lg transition-shadow mt-3"
                 >
                   {isExporting ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   ) : (
-                    <SheetIcon className="mr-2 h-5 w-5" />
+                    <Mail className="mr-2 h-5 w-5" />
                   )}
-                  {isExporting ? "Exporting..." : "Export Match Data"}
+                  {isExporting ? "Sending..." : "Email Match Report (Requires Email Below)"}
                 </Button>
+                 <Input 
+                  type="email" 
+                  id="exportEmailDuringMatch" 
+                  placeholder="Enter email for report (used at end of match)" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className="mt-1 shadow-sm w-full"
+                  disabled={isExporting} 
+                />
               </>
             ) : (
-              <>
-                <Button 
-                  onClick={handleExport} 
-                  variant="secondary" 
-                  size="lg" 
-                  disabled={isExporting || history.length <= 1}
-                  className="w-full shadow-md hover:shadow-lg transition-shadow" 
-                >
-                  {isExporting ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <SheetIcon className="mr-2 h-5 w-5" />
-                  )}
-                  {isExporting ? "Exporting..." : "Export Match Data"}
-                </Button>
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row gap-2 items-center">
+                  <Input 
+                    type="email" 
+                    id="exportEmail" 
+                    placeholder="Enter email for match report" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    className="flex-grow shadow-sm"
+                    disabled={isExporting} 
+                  />
+                  <Button 
+                    onClick={handleExport} 
+                    variant="secondary" 
+                    size="lg" 
+                    disabled={isExporting || history.length <= 1 || !email.trim()}
+                    className="w-full sm:w-auto shadow-md hover:shadow-lg transition-shadow" 
+                  >
+                    {isExporting ? (
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                      <Mail className="mr-2 h-5 w-5" />
+                    )}
+                    {isExporting ? "Sending..." : "Email Match Report"}
+                  </Button>
+                </div>
                 <Button 
                   onClick={handlePrintChart} 
                   variant="outline" 
@@ -441,7 +472,7 @@ export default function Home() {
                   <Printer className="mr-2 h-5 w-5" />
                   Export Chart to PDF
                 </Button>
-              </>
+              </div>
             )}
           </CardFooter>
         </Card>
@@ -452,4 +483,3 @@ export default function Home() {
     </main>
   );
 }
-
