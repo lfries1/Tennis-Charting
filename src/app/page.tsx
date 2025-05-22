@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataLineChart } from "@/components/DataLineChart";
 import type { DataPoint, GameMarker, SetMarker } from "@/lib/types";
-// Removed import for exportDataToSheetsAction as it's no longer directly used by the email button
+// Removed import for exportDataToSheetsAction as it's no longer directly used
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, MinusCircle, TrendingUp, Award, ShieldX, Printer, LogOut, Mail } from "lucide-react";
 
@@ -34,7 +34,6 @@ export default function Home() {
   const [setMarkers, setSetMarkers] = useState<SetMarker[]>([]);
   
   const [isClient, setIsClient] = useState(false);
-  // const [isExporting, setIsExporting] = useState(false); // Removed isExporting state
   const { toast } = useToast();
   const [withdrawnPlayer, setWithdrawnPlayer] = useState<'player' | 'opponent' | null>(null);
 
@@ -276,7 +275,7 @@ export default function Home() {
         body += "Point History: No points recorded.\n\n";
     }
 
-    body += "Note: The visual momentum chart can be exported separately as a PDF using the 'Export Chart to PDF' button in the app.\n";
+    body += "Visual Momentum Chart:\nThe visual momentum chart provides a great overview of the match flow. Please use the 'Export Chart to PDF' button in the app to generate a PDF of the chart. You can then attach this PDF to your email if desired.\n";
 
     const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
@@ -501,3 +500,4 @@ export default function Home() {
     </main>
   );
 }
+
