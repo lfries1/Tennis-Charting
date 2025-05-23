@@ -2,7 +2,7 @@
 import type {NextConfig} from 'next';
 
 // IMPORTANT: Replace 'your-repo-name' with the actual name of your GitHub repository.
-const repoName = 'your-repo-name';
+const repoName = 'Tennis-Charting.git';
 
 const isProd = process.env.NODE_ENV === 'production';
 
